@@ -1,6 +1,8 @@
 import React, { Component } from "react";
 import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Text } from "native-base";
-import { View, FlatList } from "react-native";
+import { View, FlatList, Linking } from "react-native";
+
+import { decode64, decodeRaw } from "./base64";
 
 import Tts from "react-native-tts";
 const Fs = require("react-native-fs");
@@ -16,6 +18,20 @@ class AppCore {
 export default class App extends Component {
 	constructor() {
 		super();
+
+		console.log(Fs.CachesDirectoryPath);
+		console.log(Fs.ExternalCachesDirectoryPath);
+		console.log(Fs.DocumentDirectoryPath);
+		console.log(Fs.ExternalDirectoryPath);
+		console.log(Fs.ExternalStorageDirectoryPath);
+
+		Fs.readDir(Fs.DocumentDirectoryPath).then(result => {
+			console.log("Got result", result);
+		});
+
+
+
+
 		this.core = new AppCore();
 		this.currentReadingIndex = 0;
 		this.nextFinishedIndex = 0;
@@ -43,6 +59,17 @@ export default class App extends Component {
 		});
 
 		Tts.addEventListener("tts-cancel", event => console.log("cancel", event));
+	}
+
+	componentDidMount() {
+		Linking.getInitialURL().then((url) => {
+			if (url) {
+				console.log('Initial url is: ' + url);
+				return Fs.readFile(url, "base64");
+			}
+		  }).then(text => {
+			  if (text) console.log(new TextDecoder("utf-16").decode(decodeRaw(decode64(text))));
+		  }).catch(err => console.error('An error occurred', err));
 	}
 
 	onTestButtonPress() {

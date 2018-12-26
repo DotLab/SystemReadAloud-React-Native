@@ -16,8 +16,18 @@
         android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
         android:windowSoftInputMode="adjustResize">
         <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
+          <action android:name="android.intent.action.MAIN" />
+          <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+        
+        <intent-filter>
+          <action android:name="android.intent.action.VIEW" />
+          <!-- <action android:name="android.intent.action.SEND" /> -->
+          <category android:name="android.intent.category.DEFAULT" />
+          <category android:name="android.intent.category.BROWSABLE" />
+          <data android:mimeType="message/*" />
+          <data android:mimeType="text/*" />
+          <data android:mimeType="application/xhtml+xml" />
         </intent-filter>
       </activity>
       <activity android:name="com.facebook.react.devsupport.DevSettingsActivity" />
