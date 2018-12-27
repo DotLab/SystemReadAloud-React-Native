@@ -4,7 +4,7 @@ const keyStr = "ABCDEFGHIJKLMNOP" +
               "wxyz0123456789+/" +
               "=";
 
-export function encode64(input) {
+export function rawToBase64(input) {
     var output = "";
     var chr1, chr2, chr3 = "";
     var enc1, enc2, enc3, enc4 = "";
@@ -38,7 +38,7 @@ export function encode64(input) {
     return output;
 }
 
-export function decode64(input) {
+export function base64ToRaw(input) {
     var output = "";
     var chr1, chr2, chr3 = "";
     var enc1, enc2, enc3, enc4 = "";
@@ -80,7 +80,7 @@ export function decode64(input) {
     return output;
 }
 
-export function decodeRaw(str, output, offset) {
+export function rawToArray(str, output, offset) {
   var out = output;
   if(!out) {
     out = new Uint8Array(str.length);
