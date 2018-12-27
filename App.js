@@ -1,6 +1,6 @@
 import React, { Component } from "react";
-import { View, FlatList, Linking } from "react-native";
-import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Text, List, ListItem, Footer, FooterTab, Spinner } from "native-base";
+import { View, FlatList, Linking, Alert } from "react-native";
+import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Text, List, ListItem, Footer, FooterTab, Spinner, ActionSheet, Root } from "native-base";
 
 import Store from "react-native-simple-store";
 import Tts from "react-native-tts";
@@ -19,6 +19,13 @@ import encodings from './encodings';
 
 const LIBRARY = "LIBRARY";
 const ENCODING_PICKER = "ENCODING_PICKER";
+const READER = "READER";
+
+const BookListItemActionSheetConfig = {
+	options: [ "Config", "Encoding", "Delete", "Cancel" ],
+	destructiveButtonIndex: 2,
+	cancelButtonIndex: 3,
+};
 
 function bookComparer(a, b) {
 	return a.sortTitle < b.sortTitle ? -1 : 1;
@@ -28,7 +35,7 @@ function bookKeyExtractor(x) {
 	return x.hash;
 }
 
-export default class App extends Component {
+class App extends Component {
 	constructor() {
 		super();
 		this.state = {};
@@ -68,44 +75,80 @@ export default class App extends Component {
 			} });
 		}
 		
-		this.onReloadLibrary();
+		this.reloadLibrary();
 	}
 
-	async onReloadLibrary() {
-		this.setState({ books: undefined });
+	async reloadLibrary() {
+		this.setState({ books: null });
 
 		const library = await Store.get(LIBRARY);
-		const books = Object.values(library);
+		const books = Object.values(library).filter(x => x);
+		console.log(books);
 		books.sort(bookComparer);
 
 		this.setState({ books });
 	}
 
-	onBookEncodingButtonPress(book) {
+	pickBookEncoding(book) {
 		this.setState({
 			page: ENCODING_PICKER,
 			pageProps: {
 				book,
 				onCancel: () => {
-					this.setState({ page: undefined, pageProps: undefined });
+					this.setState({ page: null });
 				},
 				onPickEncoding: encoding => {
 					book.encoding = encoding;
 					Store.update(LIBRARY, { [book.hash]: { encoding } });
-					this.setState({ page: undefined, pageProps: undefined });
+					this.setState({ page: null });
 				}
 			}
 		});
 	}
 
+	async deleteBook(book) {
+		if (book.originalTitle === this.state.importedBookTitle) this.setState({ importedBookTitle: null });
+
+		await Store.update(LIBRARY, { [book.hash]: null });
+		Fs.unlink(this.basePath + book.hash);
+		this.reloadLibrary();
+	}
+
+	onBookListItemActionSheetSelect(book, index) {
+		switch (index) {
+		case 0: return;  // config
+		case 1: this.pickBookEncoding(book); return;  // encoding
+		case 2: this.deleteBook(book); return; // delete
+		}
+	}
+
+	onBookListItemPress(book) {
+		this.setState({
+			page: READER,
+			pageProps: {
+				book,
+				onReturn: () => this.setState({ page: null })
+			}
+		});
+	}
+
 	renderBookListItem({ item: book }) {
-		return <ListItem button noIndent selected={book.originalTitle === this.state.importedBookTitle} onPress={() => this.setState({ selectedDirItem: book })}>
+		return <ListItem 
+			button noIndent 
+			selected={book.originalTitle === this.state.importedBookTitle} 
+			onPress={() => this.onBookListItemPress(book)}
+		>
 			<Body>
 				<Text>{book.title}</Text>
 				<Text note>{new Date(book.dateImported).toLocaleDateString()} • {(book.size / 1024).toFixed(0).toString()} KB</Text>
 			</Body>
 			<Right>
-				<Button light small onPress={() => this.onBookEncodingButtonPress(book)}><Text style={{ fontSize: 12 }} numberOfLines={1}>{book.encoding}</Text></Button>
+				<Button small onPress={() => {
+					ActionSheet.show(
+						Object.assign(BookListItemActionSheetConfig, { title: book.title }), 
+						index => this.onBookListItemActionSheetSelect(book, index)
+					);
+				}}><Text style={{ fontSize: 10 }} numberOfLines={1}>{book.encoding}</Text></Button>
 			</Right>
 		</ListItem>;
 	}
@@ -113,14 +156,15 @@ export default class App extends Component {
 	render() {
 		const state = this.state;
 
-		if (state.page === ENCODING_PICKER) {
-			return <EncodingPicker {...state.pageProps} />;
+		switch (state.page) {
+		case ENCODING_PICKER: return <EncodingPicker {...state.pageProps} />; 
+		case READER: return <Reader {...state.pageProps} />; 
 		}
 
 		return <Container>
 			<Header>
 				<Left>
-					<Button transparent onPress={this.onReloadLibrary.bind(this)}><Icon name="refresh" /></Button>
+					<Button transparent onPress={this.reloadLibrary.bind(this)}><Icon name="refresh" /></Button>
 				</Left>
 				<Body><Title>Library</Title></Body>
 				<Right>
@@ -144,3 +188,5 @@ export default class App extends Component {
 		</Container>;
 	}
 }
+
+export default () => <Root><App /></Root>;
