@@ -1,7 +1,7 @@
 // @flow
 
 import React, { Component } from "react";
-import Native, { View, FlatList, Linking, AsyncStorage, Alert } from "react-native";
+import Native, { View, FlatList, Linking, AsyncStorage, Alert, Dimensions } from "react-native";
 import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Text, List, ListItem, Footer, FooterTab, Spinner } from "native-base";
 import { RecyclerListView, DataProvider, LayoutProvider } from "recyclerlistview";
 
@@ -31,8 +31,19 @@ export default class Reader extends Component/*:: <Props, State> */ {
 	constructor(props/*: Props */) {
 		super(props);
 
-		this.state = {};
 		this.listRef = React.createRef();
+		
+		this.dataProvider = new DataProvider((r1, r2) => {
+			return r1 !== r2;
+		});
+		
+		const { width } = Dimensions.get("window");
+		this.layoutProvider = new LayoutProvider(() => 0, (type, dim) => {
+			dim.width = width;
+			dim.height = 20;
+		});
+
+		this.state = { dataProvider: this.dataProvider.cloneWithRows([]) };
 	}
 
 	componentDidMount() {
@@ -60,10 +71,10 @@ export default class Reader extends Component/*:: <Props, State> */ {
 			resolve(text.split(new RegExp(" *[\\n\\r]+ *")).filter(x => x));
 		});
 
-		this.setState({ loading: undefined, sentences });
+		this.setState({ loading: undefined, dataProvider: this.dataProvider.cloneWithRows(sentences) });
 	}
 
-	renderSentence({ item: text }) {
+	renderSentence(type, text) {
 		return <Native.Text>{text}</Native.Text>
 	}
 
@@ -79,13 +90,13 @@ export default class Reader extends Component/*:: <Props, State> */ {
 				<Body><Title>{props.book.title}</Title></Body>
 				<Right><Button transparent><Icon name="menu" /></Button></Right>
 			</Header>
-			<Content>
-				{state.loading ? <Spinner /> : <FlatList
-					data={state.sentences}
-					renderItem={this.renderSentence}
-					keyExtractor={sentenceKeyExtractor}
+			<View style={{ flex: 1 }}>
+				{state.loading ? <Spinner /> : <RecyclerListView
+					layoutProvider={this.layoutProvider}
+					dataProvider={state.dataProvider}
+					rowRenderer={this.renderSentence}
 				/>}
-			</Content>
+			</View>
 			<Footer>
 				<FooterTab>
 					<Button active><Text>{state.loading}</Text></Button>
