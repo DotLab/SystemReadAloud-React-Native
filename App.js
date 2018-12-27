@@ -1,3 +1,5 @@
+// @flow
+
 import React, { Component } from "react";
 import { View, FlatList, Linking, Alert } from "react-native";
 import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Text, List, ListItem, Footer, FooterTab, Spinner, ActionSheet, Root } from "native-base";
@@ -127,7 +129,8 @@ class App extends Component {
 			page: READER,
 			pageProps: {
 				book,
-				onReturn: () => this.setState({ page: null })
+				basePath: this.basePath,
+				onClose: () => this.setState({ page: null })
 			}
 		});
 	}
@@ -182,7 +185,7 @@ class App extends Component {
 
 			{state.importedBookTitle && <Footer>
 				<FooterTab>
-					<Button full><Text>{state.importedBookTitle}</Text></Button>
+					<Button active><Text>{state.importedBookTitle}</Text></Button>
 				</FooterTab>
 			</Footer>}
 		</Container>;
