@@ -137,6 +137,8 @@ android {
 }
 
 dependencies {
+    compile project(':react-native-measure-text')
+    compile project(':react-native-text-size')
     compile project(':react-native-fs')
     compile project(':react-native-tts')
     implementation fileTree(dir: "libs", include: ["*.jar"])

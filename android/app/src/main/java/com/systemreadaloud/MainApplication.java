@@ -3,6 +3,8 @@ package com.systemreadaloud;
 import android.app.Application;
 
 import com.facebook.react.ReactApplication;
+import io.github.airamrguez.RNMeasureTextPackage;
+import com.github.amarcruz.rntextsize.RNTextSizePackage;
 import com.rnfs.RNFSPackage;
 import net.no_mad.tts.TextToSpeechPackage;
 import com.facebook.react.ReactNativeHost;
@@ -25,6 +27,8 @@ public class MainApplication extends Application implements ReactApplication {
     protected List<ReactPackage> getPackages() {
       return Arrays.<ReactPackage>asList(
           new MainReactPackage(),
+            new RNMeasureTextPackage(),
+            new RNTextSizePackage(),
             new RNFSPackage(),
             new TextToSpeechPackage()
       );

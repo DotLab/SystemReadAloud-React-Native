@@ -8,6 +8,8 @@ import { RecyclerListView, DataProvider, LayoutProvider } from "recyclerlistview
 import Store from "react-native-simple-store";
 import Tts from "react-native-tts";
 import Fs from "react-native-fs";
+import MeasureText from 'react-native-measure-text';
+import TextSize, { TSFontSpecs } from 'react-native-text-size'
 
 import { TextDecoder } from "text-encoding";
 
@@ -21,8 +23,10 @@ function sentenceKeyExtractor(text, index) {
 const settings = {
 	splitRegExp: " *[\\n\\r]+ *",
 	removeEmptyLines: true,
+	fontSize: 14,
+	fontWeight: "normal",
+	fontFamily: "Roboto"
 };
-
 
 /*:: type Props = {
 	
@@ -42,6 +46,7 @@ export default class Reader extends Component/*:: <Props, State> */ {
 		});
 		
 		const { width } = Dimensions.get("window");
+		this.screenWidth = width;
 		this.layoutProvider = new LayoutProvider(() => 0, (_, dim, index) => {
 			dim.width = width;
 			dim.height = this.getSentenceHeight(index);
@@ -80,15 +85,32 @@ export default class Reader extends Component/*:: <Props, State> */ {
 		this.sentences = sentences;
 
 		this.setState({ loading: "Measuring lines..." });
-		const measuring = await startAsync(resolve => {
-			resolve(sentences.map(x => {
-				x.promise = new Promise(r => x.resolve = r);
-				return x;
-			}));
+		// const measuring = await startAsync(resolve => {
+		// 	resolve(sentences.map(x => {
+		// 		x.promise = new Promise(r => x.resolve = r);
+		// 		return x;
+		// 	}));
+		// });
+		// this.setState({ measuring });
+		// this.measuringResults = await Promise.all(measuring.map(x => x.promise));
+		const time1 = new Date();
+		// this.measuringResults = await MeasureText.heights({
+		// 	texts: sentences.map(x => x.text),
+		// 	width: this.screenWidth,
+		// 	fontSize: settings.fontSize,
+		// 	fontWeight: settings.fontWeight,
+		// 	fontFamily: settings.fontFamily
+		// });
+		this.measuringResults = await TextSize.flatHeights({
+			text: sentences.map(x => x.text),
+			width: this.screenWidth,
+			fontSize: settings.fontSize,
+			fontWeight: settings.fontWeight,
+			fontFamily: settings.fontFamily
 		});
-		this.setState({ measuring });
-		this.measuringResults = await Promise.all(measuring.map(x => x.promise));
-		console.log(this.measuringResults);
+		const time2 = new Date();
+		console.log(time2 - time1);
+		// console.log(this.measuringResults.length);
 
 		this.setState({ 
 			loading: undefined, 
@@ -103,7 +125,11 @@ export default class Reader extends Component/*:: <Props, State> */ {
 	}
 
 	renderSentence(_, { text }) {
-		return <Native.Text>{text}</Native.Text>
+		return <Native.Text style={{
+			fontSize: settings.fontSize,
+			fontWeight: settings.fontWeight,
+			fontFamily: settings.fontFamily
+		}}>{text}</Native.Text>
 	}
 
 	renderMeasuringSentence({ resolve, text, index }) {

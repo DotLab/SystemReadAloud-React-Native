@@ -99,7 +99,7 @@ class App extends Component /*:: <Props, State> */ {
 		this.setState({ books });
 
 		// test
-		// this.onBookListItemPress(books[0]);
+		this.onBookListItemPress(books[0]);
 	}
 
 	pickBookEncoding(book) {

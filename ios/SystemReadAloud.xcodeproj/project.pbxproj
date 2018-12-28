@@ -57,6 +57,8 @@
 		799E4CC7ABDC4428BBE72893 /* Zocial.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0EFBABB2E38049DF814E2C72 /* Zocial.ttf */; };
 		710E5B30B22C43A989C03117 /* libTextToSpeech.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3407E4C9493D4C20A63F3446 /* libTextToSpeech.a */; };
 		53C0C05528004EFCB42437EF /* libRNFS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 692CFC8065AC44769F9D1179 /* libRNFS.a */; };
+		B7432AA896FE4925AB9E2DB1 /* libRNTextSize.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4217384A48F749B0AF556491 /* libRNTextSize.a */; };
+		947A77477C6C4257B484F26E /* libRNMeasureText.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BB075C912254481CBFCE8419 /* libRNMeasureText.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -384,6 +386,10 @@
 		3407E4C9493D4C20A63F3446 /* libTextToSpeech.a */ = {isa = PBXFileReference; name = "libTextToSpeech.a"; path = "libTextToSpeech.a"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = archive.ar; explicitFileType = undefined; includeInIndex = 0; };
 		EDDB40C9664F4070B0A1A5BB /* RNFS.xcodeproj */ = {isa = PBXFileReference; name = "RNFS.xcodeproj"; path = "../node_modules/react-native-fs/RNFS.xcodeproj"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = wrapper.pb-project; explicitFileType = undefined; includeInIndex = 0; };
 		692CFC8065AC44769F9D1179 /* libRNFS.a */ = {isa = PBXFileReference; name = "libRNFS.a"; path = "libRNFS.a"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = archive.ar; explicitFileType = undefined; includeInIndex = 0; };
+		A2E8884C037D43779DC06176 /* RNTextSize.xcodeproj */ = {isa = PBXFileReference; name = "RNTextSize.xcodeproj"; path = "../node_modules/react-native-text-size/ios/RNTextSize.xcodeproj"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = wrapper.pb-project; explicitFileType = undefined; includeInIndex = 0; };
+		4217384A48F749B0AF556491 /* libRNTextSize.a */ = {isa = PBXFileReference; name = "libRNTextSize.a"; path = "libRNTextSize.a"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = archive.ar; explicitFileType = undefined; includeInIndex = 0; };
+		DDAA93073BB44B969AE420AA /* RNMeasureText.xcodeproj */ = {isa = PBXFileReference; name = "RNMeasureText.xcodeproj"; path = "../node_modules/react-native-measure-text/ios/RNMeasureText.xcodeproj"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = wrapper.pb-project; explicitFileType = undefined; includeInIndex = 0; };
+		BB075C912254481CBFCE8419 /* libRNMeasureText.a */ = {isa = PBXFileReference; name = "libRNMeasureText.a"; path = "libRNMeasureText.a"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = archive.ar; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -413,6 +419,8 @@
 				139FDEF61B0652A700C62182 /* libRCTWebSocket.a in Frameworks */,
 				710E5B30B22C43A989C03117 /* libTextToSpeech.a in Frameworks */,
 				53C0C05528004EFCB42437EF /* libRNFS.a in Frameworks */,
+				B7432AA896FE4925AB9E2DB1 /* libRNTextSize.a in Frameworks */,
+				947A77477C6C4257B484F26E /* libRNMeasureText.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -601,6 +609,8 @@
 				139FDEE61B06529A00C62182 /* RCTWebSocket.xcodeproj */,
 				63566AAF3EA94CDCA8EE7418 /* TextToSpeech.xcodeproj */,
 				EDDB40C9664F4070B0A1A5BB /* RNFS.xcodeproj */,
+				A2E8884C037D43779DC06176 /* RNTextSize.xcodeproj */,
+				DDAA93073BB44B969AE420AA /* RNMeasureText.xcodeproj */,
 			);
 			name = Libraries;
 			sourceTree = "<group>";
@@ -1274,12 +1284,13 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)/$(TARGET_NAME)\"",
-					"\"$(SRCROOT)/$(TARGET_NAME)\"",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)\..\node_modules\react-native-tts\ios\TextToSpeech",
 					"$(SRCROOT)\..\node_modules\react-native-fs/**",
+					"$(SRCROOT)\..\node_modules\react-native-text-size\ios",
+					"$(SRCROOT)\..\node_modules\react-native-measure-text\ios",
 				);
 			};
 			name = Debug;
@@ -1302,12 +1313,13 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)/$(TARGET_NAME)\"",
-					"\"$(SRCROOT)/$(TARGET_NAME)\"",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)\..\node_modules\react-native-tts\ios\TextToSpeech",
 					"$(SRCROOT)\..\node_modules\react-native-fs/**",
+					"$(SRCROOT)\..\node_modules\react-native-text-size\ios",
+					"$(SRCROOT)\..\node_modules\react-native-measure-text\ios",
 				);
 			};
 			name = Release;
@@ -1332,6 +1344,8 @@
 					"$(inherited)",
 					"$(SRCROOT)\..\node_modules\react-native-tts\ios\TextToSpeech",
 					"$(SRCROOT)\..\node_modules\react-native-fs/**",
+					"$(SRCROOT)\..\node_modules\react-native-text-size\ios",
+					"$(SRCROOT)\..\node_modules\react-native-measure-text\ios",
 				);
 			};
 			name = Debug;
@@ -1355,6 +1369,8 @@
 					"$(inherited)",
 					"$(SRCROOT)\..\node_modules\react-native-tts\ios\TextToSpeech",
 					"$(SRCROOT)\..\node_modules\react-native-fs/**",
+					"$(SRCROOT)\..\node_modules\react-native-text-size\ios",
+					"$(SRCROOT)\..\node_modules\react-native-measure-text\ios",
 				);
 			};
 			name = Release;
@@ -1385,12 +1401,13 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)/$(TARGET_NAME)\"",
-					"\"$(SRCROOT)/$(TARGET_NAME)\"",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)\..\node_modules\react-native-tts\ios\TextToSpeech",
 					"$(SRCROOT)\..\node_modules\react-native-fs/**",
+					"$(SRCROOT)\..\node_modules\react-native-text-size\ios",
+					"$(SRCROOT)\..\node_modules\react-native-measure-text\ios",
 				);
 			};
 			name = Debug;
@@ -1421,12 +1438,13 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)/$(TARGET_NAME)\"",
-					"\"$(SRCROOT)/$(TARGET_NAME)\"",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)\..\node_modules\react-native-tts\ios\TextToSpeech",
 					"$(SRCROOT)\..\node_modules\react-native-fs/**",
+					"$(SRCROOT)\..\node_modules\react-native-text-size\ios",
+					"$(SRCROOT)\..\node_modules\react-native-measure-text\ios",
 				);
 			};
 			name = Release;
@@ -1456,12 +1474,13 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)/$(TARGET_NAME)\"",
-					"\"$(SRCROOT)/$(TARGET_NAME)\"",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)\..\node_modules\react-native-tts\ios\TextToSpeech",
 					"$(SRCROOT)\..\node_modules\react-native-fs/**",
+					"$(SRCROOT)\..\node_modules\react-native-text-size\ios",
+					"$(SRCROOT)\..\node_modules\react-native-measure-text\ios",
 				);
 			};
 			name = Debug;
@@ -1491,12 +1510,13 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)/$(TARGET_NAME)\"",
-					"\"$(SRCROOT)/$(TARGET_NAME)\"",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)\..\node_modules\react-native-tts\ios\TextToSpeech",
 					"$(SRCROOT)\..\node_modules\react-native-fs/**",
+					"$(SRCROOT)\..\node_modules\react-native-text-size\ios",
+					"$(SRCROOT)\..\node_modules\react-native-measure-text\ios",
 				);
 			};
 			name = Release;
