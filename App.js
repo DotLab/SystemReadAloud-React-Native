@@ -128,7 +128,7 @@ class App extends Component /*:: <Props, State> */ {
 		this.listRef.current.scrollToOffset({ offset, animated: false });
 
 		// test
-		// this.onBookListItemPress(books[0]);
+		this.onBookListItemPress(books[0]);
 	}
 
 	pickBookEncoding(book /*: Book */) {

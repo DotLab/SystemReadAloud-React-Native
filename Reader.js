@@ -1,7 +1,7 @@
 // @flow
 
 import React, { Component } from "react";
-import Native, { View, FlatList, Linking, AsyncStorage, Alert, Dimensions, ScrollView } from "react-native";
+import Native, { View, FlatList, Linking, AsyncStorage, Alert, Dimensions, ScrollView, TouchableOpacity } from "react-native";
 import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Text, List, ListItem, Footer, FooterTab, Spinner } from "native-base";
 import { RecyclerListView, DataProvider, LayoutProvider } from "recyclerlistview";
 
@@ -13,6 +13,7 @@ import TextSize from 'react-native-text-size'
 
 import He from "he";
 import { TextDecoder } from "text-encoding";
+import update from 'immutability-helper';
 
 import { base64ToRaw, rawToArray } from "./bit";
 import { startAsync } from "./prom";
@@ -65,14 +66,21 @@ const settings = {
 		fontStyle: "normal"
 	},
 
-	lineScheduledColor: "#022",
-	lineReadingColor: "#200",
-	lineReadColor: "#202",
+	lineSelectedColor: "#444",
+	lineScheduledColor: "#044",
+	lineReadingColor: "#400",
+	lineReadColor: "#404",
 	pageColor: "#000",
 
 	linePaddingX: 9,
 	linePaddingY: 9,
 };
+
+const NONE = "NONE";
+const SELECTED = "SELECTED";
+const SCHEDULED = "SCHEDULED";
+const READING = "READING";
+const READ = "READ";
 
 function edit(text, edits) {
 	edits.forEach(e => text = text.replace(new RegExp(e.regexp, "g"), e.replace));
@@ -153,8 +161,8 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		this.listRef = React.createRef();
 		
 		this.lineDataProvider = new DataProvider((line1, line2) => {
-			return line1.text !== line2.text;
-		});
+			return line1.text !== line2.text || line1.status !== line2.status;
+		}); 
 		
 		const { width } = Dimensions.get("window");
 		this.screenWidth = width;
@@ -162,8 +170,9 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			dim.width = width;
 			dim.height = (this.measuringResults[index] || settings.fontSize) + settings.linePaddingY * 2;
 		});
-
 		this.state = { dataProvider: this.lineDataProvider.cloneWithRows([]) };
+
+		this.selectedIndex = props.book.viewingIndex;
 	}
 
 	componentDidMount() {
@@ -211,7 +220,8 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		var lines = await startAsync(resolve => {
 			resolve(texts.map((text, index) => ({
 				text, index,
-				segments: paint(text, settings.paints)
+				segments: paint(text, settings.paints),
+				status: index === this.props.book.viewingIndex ? SELECTED : NONE
 			})));
 		});
 		this.lines = lines;
@@ -230,19 +240,38 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 		this.setState({ 
 			loading: undefined,
-			dataProvider: this.lineDataProvider.cloneWithRows(lines) 
+			dataProvider: this.lineDataProvider.cloneWithRows(lines),
 		});
 	}
+
+	onLinePress(line) {
+		this.lines = update(this.lines, {
+			[this.selectedIndex]: { status: { $set: NONE } },
+			[line.index]: { status: { $set: SELECTED } },
+		});
+
+		this.setState({ dataProvider: this.lineDataProvider.cloneWithRows(this.lines) });
+		this.selectedIndex = line.index;
+	}
 	
-	renderSentence(_ /*: number */, { segments } /*: Sentence */) {
-		return <Native.Text allowFontScaling={false} style={{
-			paddingHorizontal: settings.linePaddingX,
-			paddingVertical: settings.linePaddingY,
-			backgroundColor: settings.lineReadColor,
-		}}>{
-			// paint(text, settings.paints).map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)
-			segments.map(({ text, style }, i) => <Native.Text key={i.toString()} allowFontScaling={false} style={style}>{text}</Native.Text>)
-		}</Native.Text>
+	renderLine(_ /*: number */, line /*: Sentence */) {
+		const { segments, status } = line;
+
+		var backgroundColor = undefined;
+		switch (status) {
+		case SELECTED: backgroundColor = settings.lineSelectedColor; break;
+		case SCHEDULED: backgroundColor = settings.lineScheduledColor; break;
+		case READING: backgroundColor = settings.lineReadingColor; break;
+		case READ: backgroundColor = settings.lineReadColor; break;
+		}
+
+		return <TouchableOpacity onPress={() => this.onLinePress(line)}>
+			<Native.Text style={{
+				paddingHorizontal: settings.linePaddingX,
+				paddingVertical: settings.linePaddingY,
+				backgroundColor: backgroundColor,
+			}}>{segments.map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)}</Native.Text>
+		</TouchableOpacity>;
 	}
 
 	onBackButtonPress() {
@@ -258,7 +287,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		return <Container>
 			<Header>
 				<Left><Button transparent onPress={this.onBackButtonPress.bind(this)}>
-					<Icon name="arrow-back" />
+					<Icon name="close" />
 				</Button></Left>
 				<Body><Title>{props.book.title}</Title></Body>
 				<Right><Button transparent onPress={() => {
@@ -275,14 +304,18 @@ export default class Reader extends Component /*:: <Props, State> */ {
 					ref={this.listRef}
 					layoutProvider={this.lineLayoutProvider}
 					dataProvider={state.dataProvider}
-					rowRenderer={this.renderSentence}
+					rowRenderer={this.renderLine.bind(this)}
 					initialRenderIndex={props.book.viewingIndex}
 				/>}
 			</View>
 			<Footer>
-				<FooterTab>
+				{state.loading ? <FooterTab>
 					<Button active><Text>{state.loading}</Text></Button>
-				</FooterTab>
+				</FooterTab> : <FooterTab>
+					{/* <Button><Icon type="MaterialIcons" name="stop" /></Button> */}
+					<Button active><Icon type="MaterialIcons" name="play-arrow" /></Button>
+					{/* <Button><Icon type="MaterialIcons" name="settings-voice" /></Button> */}
+				</FooterTab>}
 			</Footer>
 		</Container>
 	}
