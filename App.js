@@ -20,6 +20,8 @@ import EncodingPicker from "./EncodingPicker";
 import encodings from './encodings';
 
 const LIBRARY = "LIBRARY";
+const BOOK_LIST_OFFSET = "BOOK_LIST_OFFSET";
+
 const ENCODING_PICKER = "ENCODING_PICKER";
 const READER = "READER";
 
@@ -71,6 +73,7 @@ class App extends Component /*:: <Props, State> */ {
 		super();
 		this.state = {};
 		this.basePath = Fs.DocumentDirectoryPath + "/";
+		this.listRef = React.createRef();
 	}
 	
 	componentDidMount() {
@@ -102,7 +105,10 @@ class App extends Component /*:: <Props, State> */ {
 				hash,
 				size: raw.length,
 				dateImported: new Date(),
-				excerptRaw: raw.substr(0, 128)
+				excerptRaw: raw.substr(0, 128),
+				viewingLine: "",
+				viewingIndex: 0,
+				lineCount: 0,
 			} });
 		}
 		
@@ -118,9 +124,11 @@ class App extends Component /*:: <Props, State> */ {
 		books.sort(bookComparer);
 
 		this.setState({ books });
+		const offset = await Store.get(BOOK_LIST_OFFSET);
+		this.listRef.current.scrollToOffset({ offset, animated: false });
 
 		// test
-		this.onBookListItemPress(books[0]);
+		// this.onBookListItemPress(books[0]);
 	}
 
 	pickBookEncoding(book /*: Book */) {
@@ -162,7 +170,13 @@ class App extends Component /*:: <Props, State> */ {
 			pageProps: {
 				book,
 				basePath: this.basePath,
-				onClose: () => this.setState({ page: undefined })
+				onClose: async (viewingLine, viewingIndex, lineCount) => {
+					this.setState({ page: undefined });
+					await Store.update(LIBRARY, { [book.hash]: {
+						viewingLine, viewingIndex, lineCount,
+					} });
+					this.reloadLibrary();
+				}
 			}
 		});
 	}
@@ -170,12 +184,19 @@ class App extends Component /*:: <Props, State> */ {
 	renderBookListItem({ item: book }) {
 		return <ListItem 
 			button noIndent 
+			style={{ paddingLeft: 0 }}
 			selected={book.originalTitle === this.state.importedBookTitle} 
 			onPress={() => this.onBookListItemPress(book)}
 		>
 			<Body>
+				{!!book.viewingIndex && <Text note numberOfLines={1}>
+					{(book.viewingIndex / book.lineCount).toFixed(1).toString()}%
+					{!!book.viewingLine && " • " + book.viewingLine}
+				</Text>}
 				<Text>{book.title}</Text>
-				<Text note>{new Date(book.dateImported).toLocaleDateString()} • {(book.size / 1024).toFixed(0).toString()} KB</Text>
+				<Text note numberOfLines={1}>
+					{new Date(book.dateImported).toLocaleDateString()} • {(book.size / 1024).toFixed(0).toString()} KB
+				</Text>
 			</Body>
 			<Right>
 				<Button small onPress={() => {
@@ -207,13 +228,16 @@ class App extends Component /*:: <Props, State> */ {
 				</Right>
 			</Header>
 			
-			<Content>
+			<View style={{ flex: 1 }}>
 				{state.books ? <FlatList
+					ref={this.listRef}
 					data={state.books}
 					keyExtractor={bookKeyExtractor}
 					renderItem={this.renderBookListItem.bind(this)}
+					onScrollEndDrag={e => Store.save(BOOK_LIST_OFFSET, e.nativeEvent.contentOffset.y)}
+					onMomentumScrollEnd={e => Store.save(BOOK_LIST_OFFSET, e.nativeEvent.contentOffset.y)}
 				/> : <Spinner />}
-			</Content>
+			</View>
 
 			{state.importedBookTitle && <Footer>
 				<FooterTab>

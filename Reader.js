@@ -244,6 +244,12 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			segments.map(({ text, style }, i) => <Native.Text key={i.toString()} allowFontScaling={false} style={style}>{text}</Native.Text>)
 		}</Native.Text>
 	}
+
+	onBackButtonPress() {
+		const viewingIndex = this.listRef.current.findApproxFirstVisibleIndex();
+		const viewingLine = this.lines[viewingIndex].text.trim();
+		this.props.onClose(viewingLine, viewingIndex, this.lines.length);
+	}
 	
 	render() {
 		const state = this.state;
@@ -251,13 +257,16 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		
 		return <Container>
 			<Header>
-				<Left><Button transparent onPress={props.onClose}><Icon name="arrow-back" /></Button></Left>
+				<Left><Button transparent onPress={this.onBackButtonPress.bind(this)}>
+					<Icon name="arrow-back" />
+				</Button></Left>
 				<Body><Title>{props.book.title}</Title></Body>
 				<Right><Button transparent onPress={() => {
-					this.listRef.current.scrollToIndex(100, false);
+					this.listRef.current.scrollToIndex(98, false);
+					this.listRef.current.scrollToIndex(100, true);
+					// this.listRef.current.scr
 					// this.lines[100] = { ...this.lines[100], text: this.lines[0].text + "@" };
 					// this.lines[100] += "@";
-					console.log(this.lines);
 					this.setState({ dataProvider: this.lineDataProvider.cloneWithRows(this.lines) })
 				}}><Icon name="menu" /></Button></Right>
 			</Header>
@@ -267,7 +276,8 @@ export default class Reader extends Component /*:: <Props, State> */ {
 					layoutProvider={this.lineLayoutProvider}
 					dataProvider={state.dataProvider}
 					rowRenderer={this.renderSentence}
-					/>}
+					initialRenderIndex={props.book.viewingIndex}
+				/>}
 			</View>
 			<Footer>
 				<FooterTab>
