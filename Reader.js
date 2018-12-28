@@ -43,8 +43,9 @@ const settings = {
 		{ regexp: "「.+?」", style: { color: "#E6DB73" } },
 		{ regexp: "[a-zA-Z0-9 ]+", style: { color: "#AE81FF" } },
 		{ regexp: "《.+?》", style: { color: "#F92671" } },
+		{ regexp: "【.+?】", style: { color: "#F92671" } },
 		{ regexp: "『.+?』", style: { color: "#F92671" } },
-		{ regexp: "[我你他她它]", style: { color: "#F92671" } },
+		// { regexp: "[我你他她它]", style: { color: "#F92671" } },
 		{ regexp: "（.+?）", style: { color: "#74705E" } },
 		{ regexp: "\\(.+?\\)", style: { color: "#74705E" } },
 	],
@@ -189,10 +190,18 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			resolve(lines);
 		});
 		
-		this.setState({ loading: "Edit lines..." });
-		var sentences = await startAsync(resolve => {
+		this.setState({ loading: "Editing lines..." });
+		lines = await startAsync(resolve => {
 			lines = lines.map(text => edit(text, settings.edits));
-			resolve(lines.map((text, index) => ({ text, index })));
+			resolve(lines);
+		});
+		
+		this.setState({ loading: "Painting lines..." });
+		var sentences = await startAsync(resolve => {
+			resolve(lines.map((text, index) => ({
+				text, index,
+				painted: paint(text, settings.paints)
+			})));
 		});
 		this.sentences = sentences;
 
@@ -214,12 +223,13 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		});
 	}
 	
-	renderSentence(_ /*: number */, { text } /*: Sentence */) {
+	renderSentence(_ /*: number */, { painted } /*: Sentence */) {
 		return <Native.Text style={{
 			paddingHorizontal: settings.sentencePaddingX,
 			paddingVertical: settings.sentencePaddingY,
 		}}>{
-			paint(text, settings.paints).map(({ text, style }, i) => <Native.Text key={text + i} style={style}>{text}</Native.Text>)
+			// paint(text, settings.paints).map(({ text, style }, i) => <Native.Text key={text + i} style={style}>{text}</Native.Text>)
+			painted.map(({ text, style }, i) => <Native.Text key={text + i} style={style}>{text}</Native.Text>)
 		}</Native.Text>
 	}
 	
