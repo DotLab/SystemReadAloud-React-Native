@@ -190,7 +190,7 @@ class App extends Component /*:: <Props, State> */ {
 		>
 			<Body>
 				{!!book.viewingIndex && <Text note numberOfLines={1}>
-					{(book.viewingIndex / book.lineCount).toFixed(1).toString()}%
+					{(book.viewingIndex / book.lineCount * 100).toFixed(1).toString()}%
 					{!!book.viewingLine && " • " + book.viewingLine}
 				</Text>}
 				<Text>{book.title}</Text>
