@@ -27,13 +27,14 @@ const BookListItemActionSheetConfig = {
 	options: [ "Config", "Encoding", "Delete", "Cancel" ],
 	destructiveButtonIndex: 2,
 	cancelButtonIndex: 3,
+	title: "Select an option:"
 };
 
-function bookComparer(a, b) {
+function bookComparer(a /*: Book */, b /*: Book */) {
 	return a.sortTitle < b.sortTitle ? -1 : 1;
 }
 
-function bookKeyExtractor(x) {
+function bookKeyExtractor(x /*: Book */) {
 	return x.hash;
 }
 
@@ -41,11 +42,31 @@ function bookKeyExtractor(x) {
 	
 } */
 
+/*:: type Library = {
+	[key: string]: Book
+} */
+
+/*:: export type Book = {
+	title: string,
+	originalTitle: string,
+	sortTitle: string,
+	encoding: string,
+	hash: string,
+	size: number,
+	dateImported: string,
+	excerptRaw: string
+} */
+
 /*:: type State = {
-	
+	importedBookTitle?: string,
+	books?: Array<Book>,
+	page?: string,
+	pageProps?: Object
 } */
 
 class App extends Component /*:: <Props, State> */ {
+	/*:: basePath: string */
+
 	constructor() {
 		super();
 		this.state = {};
@@ -61,7 +82,7 @@ class App extends Component /*:: <Props, State> */ {
 		await Store.update(LIBRARY, {});
 
 		// handle linking
-		const url = await Linking.getInitialURL();
+		const url /*: ?string */ = await Linking.getInitialURL();
 		if (url) {
 			const urlDecoded = decodeURIComponent(url);
 			const title = urlDecoded.substring(urlDecoded.lastIndexOf("/") + 1, urlDecoded.lastIndexOf("."));
@@ -70,7 +91,7 @@ class App extends Component /*:: <Props, State> */ {
 
 			const text = await Fs.readFile(url, "base64");
 			const raw = base64ToRaw(text);
-			const hash = md5(raw);
+			const hash /*: string */ = md5(raw);
 			await Fs.writeFile(this.basePath + hash, text, "base64");
 
 			await Store.update(LIBRARY, { [hash]: {
@@ -89,10 +110,10 @@ class App extends Component /*:: <Props, State> */ {
 	}
 
 	async reloadLibrary() {
-		this.setState({ books: null });
+		this.setState({ books: undefined });
 
-		const library = await Store.get(LIBRARY);
-		const books = Object.values(library).filter(x => x);
+		const library /*: Library */ = await Store.get(LIBRARY);
+		const books /*: Array<any> */ = Object.values(library).filter(x => x);
 		console.log(books);
 		books.sort(bookComparer);
 
@@ -102,32 +123,32 @@ class App extends Component /*:: <Props, State> */ {
 		this.onBookListItemPress(books[0]);
 	}
 
-	pickBookEncoding(book) {
+	pickBookEncoding(book /*: Book */) {
 		this.setState({
 			page: ENCODING_PICKER,
 			pageProps: {
 				book,
 				onCancel: () => {
-					this.setState({ page: null });
+					this.setState({ page: undefined });
 				},
 				onPickEncoding: encoding => {
 					book.encoding = encoding;
 					Store.update(LIBRARY, { [book.hash]: { encoding } });
-					this.setState({ page: null });
+					this.setState({ page: undefined });
 				}
 			}
 		});
 	}
 
-	async deleteBook(book) {
-		if (book.originalTitle === this.state.importedBookTitle) this.setState({ importedBookTitle: null });
+	async deleteBook(book /*: Book */) {
+		if (book.originalTitle === this.state.importedBookTitle) this.setState({ importedBookTitle: undefined });
 
 		await Store.update(LIBRARY, { [book.hash]: null });
 		Fs.unlink(this.basePath + book.hash);
 		this.reloadLibrary();
 	}
 
-	onBookListItemActionSheetSelect(book, index) {
+	onBookListItemActionSheetSelect(book /*: Book */, index) {
 		switch (index) {
 		case 0: return;  // config
 		case 1: this.pickBookEncoding(book); return;  // encoding
@@ -135,13 +156,13 @@ class App extends Component /*:: <Props, State> */ {
 		}
 	}
 
-	onBookListItemPress(book) {
+	onBookListItemPress(book /*: Book */) {
 		this.setState({
 			page: READER,
 			pageProps: {
 				book,
 				basePath: this.basePath,
-				onClose: () => this.setState({ page: null })
+				onClose: () => this.setState({ page: undefined })
 			}
 		});
 	}

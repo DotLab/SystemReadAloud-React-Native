@@ -1,10 +1,12 @@
+// @flow
+
 const keyStr = "ABCDEFGHIJKLMNOP" +
               "QRSTUVWXYZabcdef" +
               "ghijklmnopqrstuv" +
               "wxyz0123456789+/" +
               "=";
 
-export function rawToBase64(input) {
+export function rawToBase64(input /*: string */) /*: string */ {
     var output = "";
     var chr1, chr2, chr3 = "";
     var enc1, enc2, enc3, enc4 = "";
@@ -38,7 +40,7 @@ export function rawToBase64(input) {
     return output;
 }
 
-export function base64ToRaw(input) {
+export function base64ToRaw(input /*: string */) /*: string */ {
     var output = "";
     var chr1, chr2, chr3 = "";
     var enc1, enc2, enc3, enc4 = "";
@@ -80,7 +82,7 @@ export function base64ToRaw(input) {
     return output;
 }
 
-export function rawToArray(str, output, offset) {
+export function rawToArray(str /*: string */, output /*: ?Uint8Array */, offset /*: ?number */) /*: Uint8Array */ {
   var out = output;
   if(!out) {
     out = new Uint8Array(str.length);

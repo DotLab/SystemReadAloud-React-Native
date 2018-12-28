@@ -9,7 +9,7 @@ import Store from "react-native-simple-store";
 import Tts from "react-native-tts";
 import Fs from "react-native-fs";
 import MeasureText from 'react-native-measure-text';
-import TextSize, { TSFontSpecs } from 'react-native-text-size'
+import TextSize from 'react-native-text-size'
 
 import { TextDecoder } from "text-encoding";
 
@@ -28,18 +28,38 @@ const settings = {
 	fontFamily: "Roboto"
 };
 
+/*:: import type { Book } from "./App" */
+/*:: import type { Ref } from "react" */
+
 /*:: type Props = {
-	
+	book: Book,
+	basePath: string,
+	onClose: () => void
 } */
 
 /*:: type State = {
 	loading?: string,
-	sentences?: Array<string>
+	sentences?: Array<string>,
+	dataProvider: DataProvider
 } */
 
-export default class Reader extends Component/*:: <Props, State> */ {
-	constructor(props/*: Props */) {
+/*:: type Sentence = {
+	text: string,
+	index: number
+} */
+
+export default class Reader extends Component /*:: <Props, State> */ {
+	/*:: dataProvider: DataProvider */
+	/*:: layoutProvider: LayoutProvider */
+	/*:: screenWidth: number */
+	/*:: sentences: Array<Sentence> */
+	/*:: listRef: Ref<RecyclerListView> */
+	/*:: measuringResults: Array<number> */
+
+	constructor(props /*: Props */) {
 		super(props);
+
+		this.listRef = React.createRef();
 		
 		this.dataProvider = new DataProvider((r1, r2) => {
 			return r1.text !== r2.text;
@@ -75,9 +95,9 @@ export default class Reader extends Component/*:: <Props, State> */ {
 		this.parseText(text);
 	}
 
-	async parseText(text/*: string */) {
+	async parseText(text /*: string */) {
 		this.setState({ loading: "Parsing text..." });
-		var sentences = await startAsync/*:: <Array<string>> */(resolve => {
+		var sentences = await startAsync/*:: <Array<Sentence>> */(resolve => {
 			var lines = text.split(new RegExp(settings.splitRegExp));
 			if (settings.removeEmptyLines) lines = lines.filter(x => x);
 			resolve(lines.map((text, index) => ({ text, index })));
@@ -113,18 +133,17 @@ export default class Reader extends Component/*:: <Props, State> */ {
 		// console.log(this.measuringResults.length);
 
 		this.setState({ 
-			loading: undefined, 
-			measuring: undefined, 
+			loading: undefined,
 			dataProvider: this.dataProvider.cloneWithRows(sentences) 
 		});
 		// this.listRef.scrollToIndex(100, true);
 	}
 
-	getSentenceHeight(index) {
+	getSentenceHeight(index /*: number */) {
 		return this.measuringResults[index] || 20;
 	}
 
-	renderSentence(_, { text }) {
+	renderSentence(_ /*: any */, { text } /*: Sentence */) {
 		return <Native.Text style={{
 			fontSize: settings.fontSize,
 			fontWeight: settings.fontWeight,
@@ -132,9 +151,9 @@ export default class Reader extends Component/*:: <Props, State> */ {
 		}}>{text}</Native.Text>
 	}
 
-	renderMeasuringSentence({ resolve, text, index }) {
-		return <Native.Text key={index.toString()} onLayout={e => resolve(e.nativeEvent.layout.height)}>{text}</Native.Text>
-	}
+	// renderMeasuringSentence({ resolve, text, index }) {
+	// 	return <Native.Text key={index.toString()} onLayout={e => resolve(e.nativeEvent.layout.height)}>{text}</Native.Text>
+	// }
 
 	render() {
 		const state = this.state;
@@ -154,8 +173,14 @@ export default class Reader extends Component/*:: <Props, State> */ {
 			</Header>
 			<View style={{ flex: 1 }}>
 				{/* {state.loading ? <Spinner /> : <ScrollView><Native.Text>{state.text}</Native.Text></ScrollView>} */}
-				{state.measuring ? <ScrollView>{state.measuring.map(x => this.renderMeasuringSentence(x))}</ScrollView> : state.loading ? <Spinner /> : <RecyclerListView
-					ref={ref => this.listRef = ref}
+				{/* {state.measuring ? <ScrollView>{state.measuring.map(x => this.renderMeasuringSentence(x))}</ScrollView> : state.loading ? <Spinner /> : <RecyclerListView
+					ref={this.listRef}
+					layoutProvider={this.layoutProvider}
+					dataProvider={state.dataProvider}
+					rowRenderer={this.renderSentence}
+				/>} */}
+				{state.loading ? <Spinner /> : <RecyclerListView
+					ref={this.listRef}
 					layoutProvider={this.layoutProvider}
 					dataProvider={state.dataProvider}
 					rowRenderer={this.renderSentence}
