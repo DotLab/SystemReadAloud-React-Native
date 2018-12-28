@@ -38,7 +38,7 @@ export default class Reader extends Component/*:: <Props, State> */ {
 		super(props);
 		
 		this.dataProvider = new DataProvider((r1, r2) => {
-			return r1 !== r2;
+			return r1.text !== r2.text;
 		});
 		
 		const { width } = Dimensions.get("window");
@@ -66,6 +66,7 @@ export default class Reader extends Component/*:: <Props, State> */ {
 			resolve(new TextDecoder(props.book.encoding).decode(array));
 		});
 
+		// this.setState({ loading: undefined, text });
 		this.parseText(text);
 	}
 
@@ -74,8 +75,9 @@ export default class Reader extends Component/*:: <Props, State> */ {
 		var sentences = await startAsync/*:: <Array<string>> */(resolve => {
 			var lines = text.split(new RegExp(settings.splitRegExp));
 			if (settings.removeEmptyLines) lines = lines.filter(x => x);
-			resolve(lines.map(text => ({ text })));
+			resolve(lines.map((text, index) => ({ text, index })));
 		});
+		this.sentences = sentences;
 
 		this.setState({ loading: "Measuring lines..." });
 		const measuring = await startAsync(resolve => {
@@ -100,8 +102,12 @@ export default class Reader extends Component/*:: <Props, State> */ {
 		return this.measuringResults[index] || 20;
 	}
 
-	renderSentence(type, { text }) {
+	renderSentence(_, { text }) {
 		return <Native.Text>{text}</Native.Text>
+	}
+
+	renderMeasuringSentence({ resolve, text, index }) {
+		return <Native.Text key={index.toString()} onLayout={e => resolve(e.nativeEvent.layout.height)}>{text}</Native.Text>
 	}
 
 	render() {
@@ -114,16 +120,15 @@ export default class Reader extends Component/*:: <Props, State> */ {
 					<Icon name="arrow-back" />
 				</Button></Left>
 				<Body><Title>{props.book.title}</Title></Body>
-				<Right><Button transparent><Icon name="menu" /></Button></Right>
+				<Right><Button transparent onPress={() => {
+					this.sentences[0] = { ...this.sentences[0], text: this.sentences[0].text + "@" };
+					console.log(this.sentences);
+					this.setState({ dataProvider: this.dataProvider.cloneWithRows(this.sentences) })
+				}}><Icon name="menu" /></Button></Right>
 			</Header>
 			<View style={{ flex: 1 }}>
-				{state.measuring ? <ScrollView>{state.measuring.map((x, i) => {
-					return <View key={x.text + "@" + i} onLayout={({ nativeEvent: { layout: { height } } }) => {
-						setTimeout(() => {
-							x.resolve(height);
-						}, 0);
-					}}>{this.renderSentence(0, x)}</View>
-				})}</ScrollView> : state.loading ? <Spinner /> : <RecyclerListView
+				{/* {state.loading ? <Spinner /> : <ScrollView><Native.Text>{state.text}</Native.Text></ScrollView>} */}
+				{state.measuring ? <ScrollView>{state.measuring.map(x => this.renderMeasuringSentence(x))}</ScrollView> : state.loading ? <Spinner /> : <RecyclerListView
 					ref={ref => this.listRef = ref}
 					layoutProvider={this.layoutProvider}
 					dataProvider={state.dataProvider}
