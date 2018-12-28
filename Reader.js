@@ -15,14 +15,98 @@ import { TextDecoder } from "text-encoding";
 
 import { base64ToRaw, rawToArray } from "./bit";
 import { startAsync } from "./prom";
+import { toFullWidth, toHalfWidth } from "./fullWidth"
 
 const settings = {
-	splitRegExp: " *[\\n\\r]+ *",
+	// preprocess
+	toFullWidth: false,
+	toHalfWidth: false,
+	preEdits: [
+		{ regexp: "★☆.*☆★", replace: "" },
+	],
+
+	// split
+	splitRegexp: " *[\\n\\r]+ *",
 	removeEmptyLines: true,
-	fontSize: 14,
-	fontWeight: "normal",
-	fontFamily: "Roboto"
+
+	// edit
+	edits: [
+		{ regexp: "^", replace: "　" },
+		{ regexp: " *([a-zA-Z0-9 ]+) *", replace: " $1 " },
+		{ regexp: " *(“.+?”) *", replace: " $1 " },
+		{ regexp: "\\!", replace: "! " },
+		{ regexp: "\\?", replace: "? " },
+	],
+	paints: [
+		{ regexp: "第.+卷.+", style: { fontWeight: "bold", color: "#65D9EF" } },
+		{ regexp: "“.+?”", style: { color: "#E6DB73" } },
+		{ regexp: "「.+?」", style: { color: "#E6DB73" } },
+		{ regexp: "[a-zA-Z0-9 ]+", style: { color: "#AE81FF" } },
+		{ regexp: "《.+?》", style: { color: "#F92671" } },
+		{ regexp: "『.+?』", style: { color: "#F92671" } },
+		{ regexp: "[我你他她它]", style: { color: "#F92671" } },
+		{ regexp: "（.+?）", style: { color: "#74705E" } },
+		{ regexp: "\\(.+?\\)", style: { color: "#74705E" } },
+	],
+
+	// rendering
+	textStyle: {
+		fontSize: 18,
+		fontWeight: "normal",
+		fontFamily: "Roboto",
+		color: "#F7F7EF",
+	},
+
+	pageColor: "#000",
+
+	sentencePaddingX: 9,
+	sentencePaddingY: 9,
 };
+
+function edit(text, edits) {
+	edits.forEach(e => text = text.replace(new RegExp(e.regexp, "g"), e.replace));
+	return text;
+}
+
+function paint(text, paints) {
+	var segments = [ { text, style: settings.textStyle } ];
+	paints.forEach(p => {
+		const re = new RegExp(p.regexp, "g");
+
+		var newSegments = [];
+		segments.forEach(({ text, style }) => {
+			var i = 0, m = null;
+			while (m = re.exec(text)) {
+				matched = true;
+
+				// before match
+				newSegments.push({
+					text: text.substring(i, m.index),
+					style,
+				});
+
+				// match
+				newSegments.push({
+					text: m[0],
+					style: { ...style, ...p.style }
+				});
+
+				// set index
+				i = m.index + m[0].length;
+			}
+
+			// after match (if any)
+			newSegments.push({
+				text: text.substring(i, text.length),
+				style,
+			});
+		});
+
+		segments = newSegments.filter(({ text }) => text);
+	});
+	// console.log(text, segments);
+	return segments;
+}
 
 /*:: import type { Book } from "./App" */
 /*:: import type { ElementRef } from "react" */
@@ -65,7 +149,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		this.screenWidth = width;
 		this.layoutProvider = new LayoutProvider(() => 0, (_, dim, index) => {
 			dim.width = width;
-			dim.height = this.measuringResults[index] || 20;;
+			dim.height = (this.measuringResults[index] || settings.fontSize) + settings.sentencePaddingY * 2;
 		});
 
 		this.state = { dataProvider: this.dataProvider.cloneWithRows([]) };
@@ -91,28 +175,37 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	}
 
 	async parseText(text /*: string */) {
-		this.setState({ loading: "Parsing text..." });
-		var sentences = await startAsync/*:: <Array<Sentence>> */(resolve => {
-			var lines = text.split(new RegExp(settings.splitRegExp));
+		this.setState({ loading: "Preprocessing text..." });
+		text = await startAsync/*:: <Array<Sentence>> */(resolve => {
+			if (settings.toFullWidth) text = toFullWidth(text);
+			if (settings.toHalfWidth) text = toHalfWidth(text);
+			resolve(edit(text, settings.preEdits));
+		});
+		
+		this.setState({ loading: "Splitting text..." });
+		var lines = await startAsync(resolve => {
+			var lines = text.split(new RegExp(settings.splitRegexp));
 			if (settings.removeEmptyLines) lines = lines.filter(x => x);
+			resolve(lines);
+		});
+		
+		this.setState({ loading: "Edit lines..." });
+		var sentences = await startAsync(resolve => {
+			lines = lines.map(text => edit(text, settings.edits));
 			resolve(lines.map((text, index) => ({ text, index })));
 		});
 		this.sentences = sentences;
 
 		this.setState({ loading: "Measuring lines..." });
 		// this.measuringResults = await MeasureText.heights({
+		//  ...settings.textStyle,
 		// 	texts: sentences.map(x => x.text),
 		// 	width: this.screenWidth,
-		// 	fontSize: settings.fontSize,
-		// 	fontWeight: settings.fontWeight,
-		// 	fontFamily: settings.fontFamily
 		// });
 		this.measuringResults = await TextSize.flatHeights({
+			...settings.textStyle,
 			text: sentences.map(x => x.text),
-			width: this.screenWidth,
-			fontSize: settings.fontSize,
-			fontWeight: settings.fontWeight,
-			fontFamily: settings.fontFamily
+			width: this.screenWidth - settings.sentencePaddingX * 2,
 		});
 
 		this.setState({ 
@@ -123,10 +216,11 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	
 	renderSentence(_ /*: number */, { text } /*: Sentence */) {
 		return <Native.Text style={{
-			fontSize: settings.fontSize,
-			fontWeight: settings.fontWeight,
-			fontFamily: settings.fontFamily
-		}}>{text}</Native.Text>
+			paddingHorizontal: settings.sentencePaddingX,
+			paddingVertical: settings.sentencePaddingY,
+		}}>{
+			paint(text, settings.paints).map(({ text, style }, i) => <Native.Text key={text + i} style={style}>{text}</Native.Text>)
+		}</Native.Text>
 	}
 	
 	render() {
@@ -144,7 +238,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 					this.setState({ dataProvider: this.dataProvider.cloneWithRows(this.sentences) })
 				}}><Icon name="menu" /></Button></Right>
 			</Header>
-			<View style={{ flex: 1 }}>
+			<View style={{ flex: 1, backgroundColor: settings.pageColor }}>
 				{state.loading ? <Spinner /> : <RecyclerListView
 					ref={this.listRef}
 					layoutProvider={this.layoutProvider}
