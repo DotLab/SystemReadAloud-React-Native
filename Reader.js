@@ -11,18 +11,24 @@ import Fs from "react-native-fs";
 import MeasureText from 'react-native-measure-text';
 import TextSize from 'react-native-text-size'
 
+import He from "he";
 import { TextDecoder } from "text-encoding";
 
 import { base64ToRaw, rawToArray } from "./bit";
 import { startAsync } from "./prom";
 import { toFullWidth, toHalfWidth } from "./fullWidth"
 
+
 const settings = {
 	// preprocess
+	decodeHtml: true,
 	toFullWidth: false,
 	toHalfWidth: false,
 	preEdits: [
 		{ regexp: "★☆.*☆★", replace: "" },
+		{ regexp: " *([a-zA-Z0-9 ]+) *", replace: " $1 " },
+		{ regexp: "\\!", replace: "! " },
+		{ regexp: "\\?", replace: "? " },
 	],
 
 	// split
@@ -31,37 +37,41 @@ const settings = {
 
 	// edit
 	edits: [
-		{ regexp: "^", replace: "　" },
-		{ regexp: " *([a-zA-Z0-9 ]+) *", replace: " $1 " },
+		{ regexp: "^", replace: "　　" },
 		{ regexp: " *(“.+?”) *", replace: " $1 " },
-		{ regexp: "\\!", replace: "! " },
-		{ regexp: "\\?", replace: "? " },
+		{ regexp: " *(‘.+?’) *", replace: " $1 " },
 	],
 	paints: [
-		{ regexp: "第.+卷.+", style: { fontWeight: "bold", color: "#65D9EF" } },
+		{ regexp: "第.+[卷章].+", style: { fontWeight: "bold", color: "#65D9EF" } },
 		{ regexp: "“.+?”", style: { color: "#E6DB73" } },
-		{ regexp: "「.+?」", style: { color: "#E6DB73" } },
-		{ regexp: "[a-zA-Z0-9 ]+", style: { color: "#AE81FF" } },
-		{ regexp: "《.+?》", style: { color: "#F92671" } },
-		{ regexp: "【.+?】", style: { color: "#F92671" } },
-		{ regexp: "『.+?』", style: { color: "#F92671" } },
-		// { regexp: "[我你他她它]", style: { color: "#F92671" } },
-		{ regexp: "（.+?）", style: { color: "#74705E" } },
-		{ regexp: "\\(.+?\\)", style: { color: "#74705E" } },
+		// { regexp: "「.+?」", style: { color: "#E6DB73" } },
+		// { regexp: "[a-zA-Z ]+", style: { color: "#B4E1D2" } },
+		// { regexp: "[0-9]+", style: { color: "#AE81FF" } },
+		// // { regexp: "第?[零〇一二三四五六七八九十百千万亿兆]+", style: { color: "#AE81FF" } },
+		// { regexp: "《.+?》", style: { color: "#F92671" } },
+		// { regexp: "【.+?】", style: { color: "#F92671" } },
+		// { regexp: "『.+?』", style: { color: "#F92671" } },
+		// { regexp: "[我你他她它]们?", style: { fontStyle: "italic" } },
+		// { regexp: "（.+?）", style: { color: "#74705E" } },
+		// { regexp: "\\(.+?\\)", style: { color: "#74705E" } },
 	],
 
 	// rendering
 	textStyle: {
+		color: "#F7F7EF",
 		fontSize: 18,
 		fontWeight: "normal",
 		fontFamily: "Roboto",
-		color: "#F7F7EF",
+		fontStyle: "normal"
 	},
 
+	lineScheduledColor: "#022",
+	lineReadingColor: "#200",
+	lineReadColor: "#202",
 	pageColor: "#000",
 
-	sentencePaddingX: 9,
-	sentencePaddingY: 9,
+	linePaddingX: 9,
+	linePaddingY: 9,
 };
 
 function edit(text, edits) {
@@ -120,7 +130,7 @@ function paint(text, paints) {
 
 /*:: type State = {
 	loading?: string,
-	sentences?: Array<string>,
+	lines?: Array<string>,
 	dataProvider: DataProvider
 } */
 
@@ -133,7 +143,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	/*:: dataProvider: DataProvider */
 	/*:: layoutProvider: LayoutProvider */
 	/*:: screenWidth: number */
-	/*:: sentences: Array<Sentence> */
+	/*:: lines: Array<Sentence> */
 	/*:: listRef: ElementRef<RecyclerListView> */
 	/*:: measuringResults: Array<number> */
 
@@ -142,18 +152,18 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 		this.listRef = React.createRef();
 		
-		this.dataProvider = new DataProvider((r1, r2) => {
-			return r1.text !== r2.text;
+		this.lineDataProvider = new DataProvider((line1, line2) => {
+			return line1.text !== line2.text;
 		});
 		
 		const { width } = Dimensions.get("window");
 		this.screenWidth = width;
-		this.layoutProvider = new LayoutProvider(() => 0, (_, dim, index) => {
+		this.lineLayoutProvider = new LayoutProvider(() => 0, (_, dim, index) => {
 			dim.width = width;
-			dim.height = (this.measuringResults[index] || settings.fontSize) + settings.sentencePaddingY * 2;
+			dim.height = (this.measuringResults[index] || settings.fontSize) + settings.linePaddingY * 2;
 		});
 
-		this.state = { dataProvider: this.dataProvider.cloneWithRows([]) };
+		this.state = { dataProvider: this.lineDataProvider.cloneWithRows([]) };
 	}
 
 	componentDidMount() {
@@ -171,6 +181,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			const array = rawToArray(base64ToRaw(base64));
 			resolve(new TextDecoder(props.book.encoding).decode(array));
 		});
+		this.text = text;
 
 		this.parseText(text);
 	}
@@ -178,58 +189,59 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	async parseText(text /*: string */) {
 		this.setState({ loading: "Preprocessing text..." });
 		text = await startAsync/*:: <Array<Sentence>> */(resolve => {
+			if (settings.decodeHtml) text = He.decode(text);
 			if (settings.toFullWidth) text = toFullWidth(text);
 			if (settings.toHalfWidth) text = toHalfWidth(text);
 			resolve(edit(text, settings.preEdits));
 		});
 		
 		this.setState({ loading: "Splitting text..." });
-		var lines = await startAsync(resolve => {
-			var lines = text.split(new RegExp(settings.splitRegexp));
-			if (settings.removeEmptyLines) lines = lines.filter(x => x);
-			resolve(lines);
+		var texts = await startAsync(resolve => {
+			var texts = text.split(new RegExp(settings.splitRegexp));
+			if (settings.removeEmptyLines) texts = texts.filter(x => x);
+			resolve(texts);
 		});
 		
-		this.setState({ loading: "Editing lines..." });
-		lines = await startAsync(resolve => {
-			lines = lines.map(text => edit(text, settings.edits));
-			resolve(lines);
+		this.setState({ loading: "Editing texts..." });
+		texts = await startAsync(resolve => {
+			resolve(texts.map(text => edit(text, settings.edits)));
 		});
 		
 		this.setState({ loading: "Painting lines..." });
-		var sentences = await startAsync(resolve => {
-			resolve(lines.map((text, index) => ({
+		var lines = await startAsync(resolve => {
+			resolve(texts.map((text, index) => ({
 				text, index,
-				painted: paint(text, settings.paints)
+				segments: paint(text, settings.paints)
 			})));
 		});
-		this.sentences = sentences;
+		this.lines = lines;
 
 		this.setState({ loading: "Measuring lines..." });
 		// this.measuringResults = await MeasureText.heights({
-		//  ...settings.textStyle,
-		// 	texts: sentences.map(x => x.text),
-		// 	width: this.screenWidth,
+		// 	...settings.textStyle,
+		// 	texts,
+		// 	width: this.screenWidth - settings.linePaddingX * 2,
 		// });
 		this.measuringResults = await TextSize.flatHeights({
 			...settings.textStyle,
-			text: sentences.map(x => x.text),
-			width: this.screenWidth - settings.sentencePaddingX * 2,
+			text: texts,
+			width: this.screenWidth - settings.linePaddingX * 2,
 		});
 
 		this.setState({ 
 			loading: undefined,
-			dataProvider: this.dataProvider.cloneWithRows(sentences) 
+			dataProvider: this.lineDataProvider.cloneWithRows(lines) 
 		});
 	}
 	
-	renderSentence(_ /*: number */, { painted } /*: Sentence */) {
-		return <Native.Text style={{
-			paddingHorizontal: settings.sentencePaddingX,
-			paddingVertical: settings.sentencePaddingY,
+	renderSentence(_ /*: number */, { segments } /*: Sentence */) {
+		return <Native.Text allowFontScaling={false} style={{
+			paddingHorizontal: settings.linePaddingX,
+			paddingVertical: settings.linePaddingY,
+			backgroundColor: settings.lineReadColor,
 		}}>{
-			// paint(text, settings.paints).map(({ text, style }, i) => <Native.Text key={text + i} style={style}>{text}</Native.Text>)
-			painted.map(({ text, style }, i) => <Native.Text key={text + i} style={style}>{text}</Native.Text>)
+			// paint(text, settings.paints).map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)
+			segments.map(({ text, style }, i) => <Native.Text key={i.toString()} allowFontScaling={false} style={style}>{text}</Native.Text>)
 		}</Native.Text>
 	}
 	
@@ -242,16 +254,17 @@ export default class Reader extends Component /*:: <Props, State> */ {
 				<Left><Button transparent onPress={props.onClose}><Icon name="arrow-back" /></Button></Left>
 				<Body><Title>{props.book.title}</Title></Body>
 				<Right><Button transparent onPress={() => {
-					this.listRef.current.scrollToIndex(100, true);
-					this.sentences[0] = { ...this.sentences[0], text: this.sentences[0].text + "@" };
-					console.log(this.sentences);
-					this.setState({ dataProvider: this.dataProvider.cloneWithRows(this.sentences) })
+					this.listRef.current.scrollToIndex(100, false);
+					// this.lines[100] = { ...this.lines[100], text: this.lines[0].text + "@" };
+					// this.lines[100] += "@";
+					console.log(this.lines);
+					this.setState({ dataProvider: this.lineDataProvider.cloneWithRows(this.lines) })
 				}}><Icon name="menu" /></Button></Right>
 			</Header>
 			<View style={{ flex: 1, backgroundColor: settings.pageColor }}>
 				{state.loading ? <Spinner /> : <RecyclerListView
 					ref={this.listRef}
-					layoutProvider={this.layoutProvider}
+					layoutProvider={this.lineLayoutProvider}
 					dataProvider={state.dataProvider}
 					rowRenderer={this.renderSentence}
 					/>}
