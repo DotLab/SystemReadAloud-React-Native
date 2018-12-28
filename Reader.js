@@ -302,7 +302,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 	onPlayButtonPress() {
 		if (!this.state.isPlaying) {
-			this.lastScheduledIndex = this.selectedIndex + settings.scheduleLength;
+			this.lastScheduledIndex = Math.min(this.lines.length - 1, this.selectedIndex + settings.scheduleLength);
 
 			const spec = {};
 			for (var i = this.selectedIndex; i <= this.lastScheduledIndex; i += 1) {
@@ -312,7 +312,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 			this.updateLinesAndSetState(spec, { isPlaying: true });
 		} else {
-			this.setState({ isPlaying: false });
+			// this.setState({ isPlaying: false });
 			Tts.stop();
 		}
 	}
@@ -354,6 +354,13 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 	onTtsCancel() {
 		console.log("onTtsCancel");
+
+		const spec = {};
+		spec[this.selectedIndex] = { status: { $set: SELECTED } };
+		for (var i = this.selectedIndex + 1; i <= this.lastScheduledIndex; i += 1) {
+			spec[i] = { status: { $set: NONE } };
+		}
+		this.updateLinesAndSetState(spec, { isPlaying: false });
 	}
 	
 	render() {
