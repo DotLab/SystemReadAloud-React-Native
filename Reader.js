@@ -1,7 +1,7 @@
 // @flow
 
 import React, { Component } from "react";
-import Native, { View, FlatList, Linking, AsyncStorage, Alert, Dimensions } from "react-native";
+import Native, { View, FlatList, Linking, AsyncStorage, Alert, Dimensions, ScrollView } from "react-native";
 import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Text, List, ListItem, Footer, FooterTab, Spinner } from "native-base";
 import { RecyclerListView, DataProvider, LayoutProvider } from "recyclerlistview";
 
@@ -14,6 +14,16 @@ import { TextDecoder } from "text-encoding";
 import { base64ToRaw, rawToArray } from "./bit";
 import { startAsync } from "./prom";
 
+function sentenceKeyExtractor(text, index) {
+	return text + "@" + index;
+}
+
+const settings = {
+	splitRegExp: " *[\\n\\r]+ *",
+	removeEmptyLines: true,
+};
+
+
 /*:: type Props = {
 	
 } */
@@ -23,24 +33,18 @@ import { startAsync } from "./prom";
 	sentences?: Array<string>
 } */
 
-function sentenceKeyExtractor(text, index) {
-	return text + "@" + index;
-}
-
 export default class Reader extends Component/*:: <Props, State> */ {
 	constructor(props/*: Props */) {
 		super(props);
-
-		this.listRef = React.createRef();
 		
 		this.dataProvider = new DataProvider((r1, r2) => {
 			return r1 !== r2;
 		});
 		
 		const { width } = Dimensions.get("window");
-		this.layoutProvider = new LayoutProvider(() => 0, (type, dim) => {
+		this.layoutProvider = new LayoutProvider(() => 0, (_, dim, index) => {
 			dim.width = width;
-			dim.height = 20;
+			dim.height = this.getSentenceHeight(index);
 		});
 
 		this.state = { dataProvider: this.dataProvider.cloneWithRows([]) };
@@ -65,16 +69,38 @@ export default class Reader extends Component/*:: <Props, State> */ {
 		this.parseText(text);
 	}
 
-	async parseText(text/*: string*/) {
+	async parseText(text/*: string */) {
 		this.setState({ loading: "Parsing text..." });
-		const sentences = await startAsync/*:: <Array<string>> */(resolve => {
-			resolve(text.split(new RegExp(" *[\\n\\r]+ *")).filter(x => x));
+		var sentences = await startAsync/*:: <Array<string>> */(resolve => {
+			var lines = text.split(new RegExp(settings.splitRegExp));
+			if (settings.removeEmptyLines) lines = lines.filter(x => x);
+			resolve(lines.map(text => ({ text })));
 		});
 
-		this.setState({ loading: undefined, dataProvider: this.dataProvider.cloneWithRows(sentences) });
+		this.setState({ loading: "Measuring lines..." });
+		const measuring = await startAsync(resolve => {
+			resolve(sentences.map(x => {
+				x.promise = new Promise(r => x.resolve = r);
+				return x;
+			}));
+		});
+		this.setState({ measuring });
+		this.measuringResults = await Promise.all(measuring.map(x => x.promise));
+		console.log(this.measuringResults);
+
+		this.setState({ 
+			loading: undefined, 
+			measuring: undefined, 
+			dataProvider: this.dataProvider.cloneWithRows(sentences) 
+		});
+		// this.listRef.scrollToIndex(100, true);
 	}
 
-	renderSentence(type, text) {
+	getSentenceHeight(index) {
+		return this.measuringResults[index] || 20;
+	}
+
+	renderSentence(type, { text }) {
 		return <Native.Text>{text}</Native.Text>
 	}
 
@@ -91,7 +117,14 @@ export default class Reader extends Component/*:: <Props, State> */ {
 				<Right><Button transparent><Icon name="menu" /></Button></Right>
 			</Header>
 			<View style={{ flex: 1 }}>
-				{state.loading ? <Spinner /> : <RecyclerListView
+				{state.measuring ? <ScrollView>{state.measuring.map((x, i) => {
+					return <View key={x.text + "@" + i} onLayout={({ nativeEvent: { layout: { height } } }) => {
+						setTimeout(() => {
+							x.resolve(height);
+						}, 0);
+					}}>{this.renderSentence(0, x)}</View>
+				})}</ScrollView> : state.loading ? <Spinner /> : <RecyclerListView
+					ref={ref => this.listRef = ref}
 					layoutProvider={this.layoutProvider}
 					dataProvider={state.dataProvider}
 					rowRenderer={this.renderSentence}

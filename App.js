@@ -37,7 +37,15 @@ function bookKeyExtractor(x) {
 	return x.hash;
 }
 
-class App extends Component {
+/*:: type Props = {
+	
+} */
+
+/*:: type State = {
+	
+} */
+
+class App extends Component /*:: <Props, State> */ {
 	constructor() {
 		super();
 		this.state = {};
@@ -89,6 +97,9 @@ class App extends Component {
 		books.sort(bookComparer);
 
 		this.setState({ books });
+
+		// test
+		this.onBookListItemPress(books[0]);
 	}
 
 	pickBookEncoding(book) {
