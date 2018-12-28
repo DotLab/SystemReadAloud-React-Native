@@ -7,7 +7,7 @@ import { RecyclerListView, DataProvider, LayoutProvider } from "recyclerlistview
 
 import Store from "react-native-simple-store";
 import Tts from "react-native-tts";
-import Fs from "react-native-fs";
+import Fs, { stat } from "react-native-fs";
 import MeasureText from 'react-native-measure-text';
 import TextSize from 'react-native-text-size'
 
@@ -74,6 +74,9 @@ const settings = {
 
 	linePaddingX: 9,
 	linePaddingY: 9,
+
+	// reading
+	scheduleLength: 4,
 };
 
 const NONE = "NONE";
@@ -239,19 +242,36 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		});
 
 		this.setState({ 
-			loading: undefined,
+			loading: "Waiting for TTS...",
 			dataProvider: this.lineDataProvider.cloneWithRows(lines),
 		});
+
+		try {
+			await Tts.getInitStatus();
+		} catch(err) {
+			if (err.code === 'no_engine') {
+				Tts.requestInstallEngine();
+				return;
+			}
+		}
+		Tts.addEventListener("tts-start", this.onTtsStart.bind(this));
+		Tts.addEventListener("tts-finish", this.onTtsFinish.bind(this));
+		Tts.addEventListener("tts-cancel", this.onTtsCancel.bind(this));
+		this.setState({ loading: undefined, isPlaying: false });
+		
+		// test
+		Tts.voices().then(v => console.log(v.filter(x => !x.notInstalled && !x.networkConnectionRequired)));
+		this.onPlayButtonPress();
 	}
 
 	onLinePress(line) {
-		this.lines = update(this.lines, {
-			[this.selectedIndex]: { status: { $set: NONE } },
-			[line.index]: { status: { $set: SELECTED } },
-		});
-
-		this.setState({ dataProvider: this.lineDataProvider.cloneWithRows(this.lines) });
-		this.selectedIndex = line.index;
+		if (!this.state.isPlaying) {
+			this.updateLinesAndSetState({
+				[this.selectedIndex]: { status: { $set: NONE } },
+				[line.index]: { status: { $set: SELECTED } },
+			});
+			this.selectedIndex = line.index;
+		}
 	}
 	
 	renderLine(_ /*: number */, line /*: Sentence */) {
@@ -278,6 +298,62 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		const viewingIndex = this.listRef.current.findApproxFirstVisibleIndex();
 		const viewingLine = this.lines[viewingIndex].text.trim();
 		this.props.onClose(viewingLine, viewingIndex, this.lines.length);
+	}
+
+	onPlayButtonPress() {
+		if (!this.state.isPlaying) {
+			this.lastScheduledIndex = this.selectedIndex + settings.scheduleLength;
+
+			const spec = {};
+			for (var i = this.selectedIndex; i <= this.lastScheduledIndex; i += 1) {
+				Tts.speak(this.lines[i].text);
+				spec[i] = { status: { $set: SCHEDULED } };
+			}
+
+			this.updateLinesAndSetState(spec, { isPlaying: true });
+		} else {
+			this.setState({ isPlaying: false });
+			Tts.stop();
+		}
+	}
+
+	updateLinesAndSetState(spec, state) {
+		this.lines = update(this.lines, spec);
+		if (typeof state === "object") {
+			this.setState({ dataProvider: this.lineDataProvider.cloneWithRows(this.lines), ...state });
+		} else {
+			this.setState({ dataProvider: this.lineDataProvider.cloneWithRows(this.lines) });
+		}
+	}
+
+	onTtsStart() {
+		console.log("onTtsStart");
+
+		if (Math.abs(this.listRef.current.findApproxFirstVisibleIndex() - this.selectedIndex) < 2) {
+			this.listRef.current.scrollToIndex(this.selectedIndex, true);
+		}
+		this.updateLinesAndSetState({
+			[this.selectedIndex]: { status: { $set: READING } }
+		});
+	}
+
+	onTtsFinish() {
+		console.log("onTtsFinish");
+
+		if (this.selectedIndex !== this.lastScheduledIndex) {
+			this.updateLinesAndSetState({ [this.selectedIndex]: { status: { $set: READ } } });
+		} else {  // last one
+			this.updateLinesAndSetState({
+				[this.selectedIndex]: { status: { $set: READ } },
+				[this.selectedIndex + 1]: { status: { $set: SELECTED } }
+			}, { isPlaying: false });
+		}
+		this.selectedIndex += 1;
+		
+	}
+
+	onTtsCancel() {
+		console.log("onTtsCancel");
 	}
 	
 	render() {
@@ -313,7 +389,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 					<Button active><Text>{state.loading}</Text></Button>
 				</FooterTab> : <FooterTab>
 					{/* <Button><Icon type="MaterialIcons" name="stop" /></Button> */}
-					<Button active><Icon type="MaterialIcons" name="play-arrow" /></Button>
+					<Button active onPress={this.onPlayButtonPress.bind(this)}><Icon type="MaterialIcons" name={state.isPlaying ? "pause" : "play-arrow"} /></Button>
 					{/* <Button><Icon type="MaterialIcons" name="settings-voice" /></Button> */}
 				</FooterTab>}
 			</Footer>
