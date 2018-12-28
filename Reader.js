@@ -16,10 +16,6 @@ import { TextDecoder } from "text-encoding";
 import { base64ToRaw, rawToArray } from "./bit";
 import { startAsync } from "./prom";
 
-function sentenceKeyExtractor(text, index) {
-	return text + "@" + index;
-}
-
 const settings = {
 	splitRegExp: " *[\\n\\r]+ *",
 	removeEmptyLines: true,
@@ -29,7 +25,7 @@ const settings = {
 };
 
 /*:: import type { Book } from "./App" */
-/*:: import type { Ref } from "react" */
+/*:: import type { ElementRef } from "react" */
 
 /*:: type Props = {
 	book: Book,
@@ -53,7 +49,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	/*:: layoutProvider: LayoutProvider */
 	/*:: screenWidth: number */
 	/*:: sentences: Array<Sentence> */
-	/*:: listRef: Ref<RecyclerListView> */
+	/*:: listRef: ElementRef<RecyclerListView> */
 	/*:: measuringResults: Array<number> */
 
 	constructor(props /*: Props */) {
@@ -69,7 +65,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		this.screenWidth = width;
 		this.layoutProvider = new LayoutProvider(() => 0, (_, dim, index) => {
 			dim.width = width;
-			dim.height = this.getSentenceHeight(index);
+			dim.height = this.measuringResults[index] || 20;;
 		});
 
 		this.state = { dataProvider: this.dataProvider.cloneWithRows([]) };
@@ -91,7 +87,6 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			resolve(new TextDecoder(props.book.encoding).decode(array));
 		});
 
-		// this.setState({ loading: undefined, text });
 		this.parseText(text);
 	}
 
@@ -105,15 +100,6 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		this.sentences = sentences;
 
 		this.setState({ loading: "Measuring lines..." });
-		// const measuring = await startAsync(resolve => {
-		// 	resolve(sentences.map(x => {
-		// 		x.promise = new Promise(r => x.resolve = r);
-		// 		return x;
-		// 	}));
-		// });
-		// this.setState({ measuring });
-		// this.measuringResults = await Promise.all(measuring.map(x => x.promise));
-		const time1 = new Date();
 		// this.measuringResults = await MeasureText.heights({
 		// 	texts: sentences.map(x => x.text),
 		// 	width: this.screenWidth,
@@ -128,63 +114,43 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			fontWeight: settings.fontWeight,
 			fontFamily: settings.fontFamily
 		});
-		const time2 = new Date();
-		console.log(time2 - time1);
-		// console.log(this.measuringResults.length);
 
 		this.setState({ 
 			loading: undefined,
 			dataProvider: this.dataProvider.cloneWithRows(sentences) 
 		});
-		// this.listRef.scrollToIndex(100, true);
 	}
-
-	getSentenceHeight(index /*: number */) {
-		return this.measuringResults[index] || 20;
-	}
-
-	renderSentence(_ /*: any */, { text } /*: Sentence */) {
+	
+	renderSentence(_ /*: number */, { text } /*: Sentence */) {
 		return <Native.Text style={{
 			fontSize: settings.fontSize,
 			fontWeight: settings.fontWeight,
 			fontFamily: settings.fontFamily
 		}}>{text}</Native.Text>
 	}
-
-	// renderMeasuringSentence({ resolve, text, index }) {
-	// 	return <Native.Text key={index.toString()} onLayout={e => resolve(e.nativeEvent.layout.height)}>{text}</Native.Text>
-	// }
-
+	
 	render() {
 		const state = this.state;
 		const props = this.props;
-
+		
 		return <Container>
 			<Header>
-				<Left><Button transparent onPress={props.onClose}>
-					<Icon name="arrow-back" />
-				</Button></Left>
+				<Left><Button transparent onPress={props.onClose}><Icon name="arrow-back" /></Button></Left>
 				<Body><Title>{props.book.title}</Title></Body>
 				<Right><Button transparent onPress={() => {
+					this.listRef.current.scrollToIndex(100, true);
 					this.sentences[0] = { ...this.sentences[0], text: this.sentences[0].text + "@" };
 					console.log(this.sentences);
 					this.setState({ dataProvider: this.dataProvider.cloneWithRows(this.sentences) })
 				}}><Icon name="menu" /></Button></Right>
 			</Header>
 			<View style={{ flex: 1 }}>
-				{/* {state.loading ? <Spinner /> : <ScrollView><Native.Text>{state.text}</Native.Text></ScrollView>} */}
-				{/* {state.measuring ? <ScrollView>{state.measuring.map(x => this.renderMeasuringSentence(x))}</ScrollView> : state.loading ? <Spinner /> : <RecyclerListView
-					ref={this.listRef}
-					layoutProvider={this.layoutProvider}
-					dataProvider={state.dataProvider}
-					rowRenderer={this.renderSentence}
-				/>} */}
 				{state.loading ? <Spinner /> : <RecyclerListView
 					ref={this.listRef}
 					layoutProvider={this.layoutProvider}
 					dataProvider={state.dataProvider}
 					rowRenderer={this.renderSentence}
-				/>}
+					/>}
 			</View>
 			<Footer>
 				<FooterTab>
