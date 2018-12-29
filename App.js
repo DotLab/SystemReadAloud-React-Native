@@ -56,7 +56,10 @@ function bookKeyExtractor(x /*: Book */) {
 	hash: string,
 	size: number,
 	dateImported: string,
-	excerptRaw: string
+	excerptRaw: string,
+	viewingLine: string,
+	viewingIndex: number,
+	lineCount: number,
 } */
 
 /*:: type State = {

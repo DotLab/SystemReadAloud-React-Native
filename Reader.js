@@ -19,7 +19,33 @@ import { base64ToRaw, rawToArray } from "./bit";
 import { startAsync } from "./prom";
 import { toFullWidth, toHalfWidth } from "./fullWidth"
 
-// line: text | [ segment ] | draft | lastSpeechId
+/*:: import type { Book } from "./App" */
+/*:: import type { ElementRef } from "react" */
+/*:: import type { Spec } from "immutability-helper" */
+
+/*:: type Edit = {|
+	regexp: string,
+	replace: string
+|} */
+
+/*:: type Paint<T> = {|
+	regexp: string,
+	style: T
+|} */
+
+/*:: type TextStyle = {|
+	color?: string,
+	fontSize?: number,
+	fontWeight?: string,
+	fontFamily?: string,
+	fontStyle?: string
+|} */
+
+/*:: type VoiceStyle = {|
+	voiceId?: string,
+	pitch?: number,
+	rate?: number
+|} */
 
 const settings = {
 	// preprocess
@@ -102,14 +128,18 @@ const SELECTED = "SELECTED";
 const SCHEDULED = "SCHEDULED";
 const READING = "READING";
 const READ = "READ";
-// const PEEK = "PEEK";
 
-function edit(text, edits) {
+function edit(text/*: string */, edits/*: Array<Edit> */) /*: string */ {
 	edits.forEach(e => text = text.replace(new RegExp(e.regexp, "g"), e.replace));
 	return text;
 }
 
-function paint(text, style, paints) {
+/*:: type Segment<T> = {|
+	text: string,
+	style: T
+|} */
+
+function paint/*:: <T> */(text/*: string */, style/*: T */, paints/*: Array<Paint<T>> */) /*: Array<Segment<T>> */ {
 	var segments = [ { text, style } ];
 	paints.forEach(p => {
 		const re = new RegExp(p.regexp, "g");
@@ -118,8 +148,6 @@ function paint(text, style, paints) {
 		segments.forEach(({ text, style }) => {
 			var i = 0, m = null;
 			while (m = re.exec(text)) {
-				matched = true;
-
 				// before match
 				newSegments.push({
 					text: text.substring(i, m.index),
@@ -149,48 +177,53 @@ function paint(text, style, paints) {
 	return segments;
 }
 
-function voiceStyleToParam(voiceStyle) {
+function voiceStyleToParam(voiceStyle/*: VoiceStyle */) {
 	return {
 		iosVoiceId: voiceStyle.voiceId,
 		androidParams: { KEY_PARAM_UTTERANCE_ID: voiceStyle.voiceId },
 	};
 }
 
-function setDefaultByVoiceStyle(voiceStyle) {
+function setDefaultByVoiceStyle(voiceStyle/*: VoiceStyle */) {
 	if (voiceStyle.voiceId) Tts.setDefaultVoice(voiceStyle.voiceId);
 	if (voiceStyle.pitch) Tts.setDefaultPitch(voiceStyle.pitch);
 	if (voiceStyle.rate) Tts.setDefaultRate(voiceStyle.rate);
 }
 
-/*:: import type { Book } from "./App" */
-/*:: import type { ElementRef } from "react" */
-
-/*:: type Props = {
+/*:: type Props = {|
 	book: Book,
 	basePath: string,
-	onClose: () => void
-} */
+	onClose: (string, number, number) => any
+|} */
 
-/*:: type State = {
+/*:: type State = {|
 	loading?: string,
 	lines?: Array<string>,
-	dataProvider: DataProvider
-} */
+	dataProvider?: DataProvider,
+	isPlaying?: boolean,
+|} */
 
-/*:: type Sentence = {
+/*:: type Line = {|
 	text: string,
-	index: number
-} */
+	index: number,
+	status: string,
+	segments?: Array<Segment<TextStyle>>,
+	lastSpeechId: number
+|} */
 
 export default class Reader extends Component /*:: <Props, State> */ {
-	/*:: dataProvider: DataProvider */
-	/*:: layoutProvider: LayoutProvider */
 	/*:: screenWidth: number */
-	/*:: lines: Array<Sentence> */
 	/*:: listRef: ElementRef<RecyclerListView> */
+	/*:: lines: Array<Line> */
+	/*:: lineDataProvider: DataProvider */
+	/*:: lineLayoutProvider: LayoutProvider */
 	/*:: measuringResults: Array<number> */
 
-	constructor(props /*: Props */) {
+	/*:: selectedIndex: number */
+	/*:: lastScheduledIndex: number */
+	/*:: currentSpeechId: number */
+
+	constructor(props/*: Props */) {
 		super(props);
 
 		this.listRef = React.createRef();
@@ -203,7 +236,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		this.screenWidth = width;
 		this.lineLayoutProvider = new LayoutProvider(() => 0, (_, dim, index) => {
 			dim.width = width;
-			dim.height = (this.measuringResults[index] || settings.fontSize) + settings.linePaddingY * 2;
+			dim.height = (this.measuringResults[index] || settings.textStyle.fontSize) + settings.linePaddingY * 2;
 		});
 		this.state = { dataProvider: this.lineDataProvider.cloneWithRows([]) };
 
@@ -225,14 +258,13 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			const array = rawToArray(base64ToRaw(base64));
 			resolve(new TextDecoder(props.book.encoding).decode(array));
 		});
-		this.text = text;
 
 		this.parseText(text);
 	}
 
-	async parseText(text /*: string */) {
+	async parseText(text/*: string */) {
 		this.setState({ loading: "Preprocessing text..." });
-		text = await startAsync/*:: <Array<Sentence>> */(resolve => {
+		text = await startAsync/*:: <string> */(resolve => {
 			if (settings.decodeHtml) text = He.decode(text);
 			if (settings.toFullWidth) text = toFullWidth(text);
 			if (settings.toHalfWidth) text = toHalfWidth(text);
@@ -240,40 +272,41 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		});
 		
 		this.setState({ loading: "Splitting text..." });
-		var texts = await startAsync(resolve => {
+		const texts /*: Array<string> */ = await startAsync/*:: <Array<string>> */(resolve => {
 			var texts = text.split(new RegExp(settings.splitRegexp));
 			if (settings.removeEmptyLines) texts = texts.filter(x => x);
 			resolve(texts);
 		});
 		
 		this.setState({ loading: "Editing texts..." });
-		texts = await startAsync(resolve => {
+		const edited = await startAsync/*:: <Array<string>> */(resolve => {
 			resolve(texts.map(text => edit(text, settings.edits)));
 		});
 		
 		this.setState({ loading: "Painting lines..." });
-		var lines = await startAsync(resolve => {
-			resolve(texts.map((text, index) => ({
+		const lines = await startAsync/*:: <Array<Line>> */(resolve => {
+			resolve(edited.map((text, index) => ({
 				text, index,
-				segments: paint(text, settings.textStyle, settings.paints),
-				status: index === this.props.book.viewingIndex ? SELECTED : NONE
+				segments: paint/*:: <TextStyle> */(text, settings.textStyle, settings.paints),
+				status: index === this.props.book.viewingIndex ? SELECTED : NONE,
+				lastSpeechId: 0
 			})));
 		});
 		this.lines = lines;
 
 		this.setState({ loading: "Measuring lines..." });
-		// this.measuringResults = await MeasureText.heights({
-		// 	...settings.textStyle,
-		// 	texts,
-		// 	width: this.screenWidth - settings.linePaddingX * 2,
-		// });
-		this.measuringResults = await TextSize.flatHeights({
+		this.measuringResults = await MeasureText.heights({
 			...settings.textStyle,
-			text: texts,
+			texts,
 			width: this.screenWidth - settings.linePaddingX * 2,
 		});
+		// this.measuringResults = await TextSize.flatHeights({
+		// 	...settings.textStyle,
+		// 	text: texts,
+		// 	width: this.screenWidth - settings.linePaddingX * 2,
+		// });
 
-		this.setState({ 
+		this.setState({
 			loading: "Waiting for TTS...",
 			dataProvider: this.lineDataProvider.cloneWithRows(lines),
 		});
@@ -296,7 +329,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		this.onPlayButtonPress();
 	}
 
-	onLinePress(line) {
+	onLinePress(line/*: Line */) {
 		if (!this.state.isPlaying) {
 			this.updateLinesAndSetState({
 				[this.selectedIndex]: { status: { $set: NONE } },
@@ -315,7 +348,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		}
 	}
 	
-	renderLine(_ /*: number */, line /*: Sentence */) {
+	renderLine(_/*: number */, line/*: Line */) {
 		const { segments, status } = line;
 
 		var backgroundColor = undefined;
@@ -334,7 +367,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 				backgroundColor: backgroundColor,
 			}}>{
 				// (status === PEEK ? paint(line.draft, settings.textStyle, settings.paints) : segments)
-				segments.map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)
+				segments && segments.map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)
 			}</Native.Text>
 		</TouchableOpacity>;
 	}
@@ -379,7 +412,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		}
 	}
 
-	updateLinesAndSetState(spec, state) {
+	updateLinesAndSetState(spec/*: Spec<any, any> */, state/*: ?State */) {
 		this.lines = update(this.lines, spec);
 		if (typeof state === "object") {
 			this.setState({ dataProvider: this.lineDataProvider.cloneWithRows(this.lines), ...state });
@@ -411,7 +444,6 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		if (this.currentSpeechId > this.lines[this.selectedIndex].lastSpeechId) {
 			if (this.selectedIndex !== this.lastScheduledIndex) {
 				this.updateLinesAndSetState({ [this.selectedIndex]: { status: { $set: READ } } });
-				// Tts.setDefaultPitch(settings.voiceStyle.pitch += 0.1);
 			} else {  // last one
 				this.updateLinesAndSetState({
 					[this.selectedIndex]: { status: { $set: READ } },
