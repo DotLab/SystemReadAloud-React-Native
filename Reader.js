@@ -86,8 +86,8 @@ const settings = {
 		rate: 1
 	},
 	voicePaints: [
-		{ regexp: "[我你他她它]们?", style: { pitch: .8 } },
-		{ regexp: "“.+?”", style: { pitch: 1.2 } },
+		// { regexp: "[我你他她它]们?", style: { pitch: .8 } },
+		// { regexp: "“.+?”", style: { pitch: 1.2 } },
 		// { regexp: "‘.+?’", style: { voiceId: "yue-hk-x-jar-local" } },
 		{ regexp: "[a-zA-Z][a-zA-Z0-9 ]*", style: { voiceId: "en-us-x-sfg#female_1-local" } },
 	],
@@ -154,6 +154,12 @@ function voiceStyleToParam(voiceStyle) {
 		iosVoiceId: voiceStyle.voiceId,
 		androidParams: { KEY_PARAM_UTTERANCE_ID: voiceStyle.voiceId },
 	};
+}
+
+function setDefaultByVoiceStyle(voiceStyle) {
+	if (voiceStyle.voiceId) Tts.setDefaultVoice(voiceStyle.voiceId);
+	if (voiceStyle.pitch) Tts.setDefaultPitch(voiceStyle.pitch);
+	if (voiceStyle.rate) Tts.setDefaultRate(voiceStyle.rate);
 }
 
 /*:: import type { Book } from "./App" */
@@ -286,7 +292,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		this.setState({ loading: undefined, isPlaying: false });
 		
 		// test
-		Tts.voices().then(v => console.log(v.filter(x => !x.notInstalled && !x.networkConnectionRequired)));
+		// Tts.voices().then(v => console.log(v.filter(x => !x.notInstalled && !x.networkConnectionRequired)));
 		this.onPlayButtonPress();
 	}
 
@@ -346,6 +352,8 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			Tts.setDefaultRate(settings.voiceStyle.rate);
 			Tts.setDefaultPitch(settings.voiceStyle.pitch);
 
+			// if (this.listRef.current) this.listRef.current.scrollToIndex(this.selectedIndex);
+
 			const spec = {};
 			this.currentSpeechId = 0;
 			var lastSpeechId = -1;
@@ -381,7 +389,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	}
 
 	willListAutoScroll() {
-		return Math.abs(this.listRef.current.findApproxFirstVisibleIndex() - this.selectedIndex) < 3;
+		return this.listRef.current && Math.abs(this.listRef.current.findApproxFirstVisibleIndex() - this.selectedIndex) < 3;
 	}
 
 	onTtsStart() {
