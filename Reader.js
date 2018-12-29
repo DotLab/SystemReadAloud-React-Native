@@ -62,7 +62,7 @@ const settings = {
 	// split
 	splitRegexp: " *[\\n\\r]+ *",
 	removeEmptyLines: true,
-	measuringOffset: 0,
+	measuringOffset: 0,  // doesn't quite work...
 
 	// edit
 	edits: [
@@ -79,7 +79,7 @@ const settings = {
 		fontFamily: "Roboto",
 		fontStyle: "normal"
 	},
-	paints: [
+	textPaints: [
 		// { regexp: "第.+[卷章].+", style: { fontWeight: "bold", color: "#65D9EF" } },
 		// { regexp: "“.+?”", style: { color: "#E6DB73" } },
 		// { regexp: "「.+?」", style: { color: "#E6DB73" } }	,
@@ -301,12 +301,12 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		// this.measuringResults = await MeasureText.heights({
 		// 	...settings.textStyle,
 		// 	texts,
-		// 	width: this.screenWidth - settings.linePaddingX * 2,
+		// 	width: this.screenWidth - settings.linePaddingX * 2 - settings.measuringOffset,
 		// });
 		this.measuringResults = await TextSize.flatHeights({
 			...settings.textStyle,
 			text: texts,
-			width: this.screenWidth - settings.linePaddingX * 2,
+			width: this.screenWidth - settings.linePaddingX * 2 - settings.measuringOffset,
 		});
 
 		this.setState({
@@ -352,17 +352,14 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		else if (line.voiceSegments) backgroundColor = settings.lineScheduledColor;
 
 		// paint as needed
-		if (!line.textSegments) line.textSegments = paint/*:: <TextStyle> */(line.text, settings.textStyle, settings.paints)
+		if (!line.textSegments) line.textSegments = paint/*:: <TextStyle> */(line.text, settings.textStyle, settings.textPaints)
 
 		return <TouchableOpacity onPress={() => this.onLinePress(line)}>
 			<Native.Text style={{
 				paddingHorizontal: settings.linePaddingX,
 				paddingVertical: settings.linePaddingY,
 				backgroundColor: backgroundColor,
-			}}>{
-				// (status === PEEK ? paint(line.draft, settings.textStyle, settings.paints) : segments)
-				line.textSegments.map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)
-			}</Native.Text>
+			}}>{line.textSegments.map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)}</Native.Text>
 		</TouchableOpacity>;
 	}
 
