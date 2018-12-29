@@ -19,6 +19,8 @@ import EncodingPicker from "./EncodingPicker";
 
 import encodings from './encodings';
 
+/*:: import type { ElementRef } from "react" */
+
 const LIBRARY = "LIBRARY";
 const BOOK_LIST_OFFSET = "BOOK_LIST_OFFSET";
 
@@ -44,8 +46,11 @@ function bookKeyExtractor(x /*: Book */) {
 	
 } */
 
-/*:: type Library = {
-	[key: string]: Book
+/*:: type State = {
+	importedBookTitle?: string,
+	books?: Array<Book>,
+	page?: string,
+	pageProps?: Object
 } */
 
 /*:: export type Book = {
@@ -62,15 +67,13 @@ function bookKeyExtractor(x /*: Book */) {
 	lineCount: number,
 } */
 
-/*:: type State = {
-	importedBookTitle?: string,
-	books?: Array<Book>,
-	page?: string,
-	pageProps?: Object
+/*:: type Library = {
+	[key: string]: Book
 } */
 
 class App extends Component /*:: <Props, State> */ {
 	/*:: basePath: string */
+	/*:: listRef: ElementRef<FlatList> */
 
 	constructor() {
 		super();
