@@ -94,10 +94,9 @@ const settings = {
 	],
 	
 	lineSelectedColor: "#444",
-	lineScheduledColor: "#044",
+	lineScheduledColor: "#034",
 	lineReadingColor: "#544",
-	lineReadColor: "#404",
-	// linePeekColor: "#440",
+	lineReadColor: "#201",
 	pageColor: "#000",
 	
 	linePaddingX: 9,
@@ -204,10 +203,13 @@ function setDefaultByVoiceStyle(voiceStyle/*: VoiceStyle */) {
 |} */
 
 /*:: type Line = {|
-	text: string,
 	index: number,
-	status: string,
+	isSelected: boolean,
+	isReading: boolean,
+	isRead: boolean,
+	text: string,
 	segments?: Array<Segment<TextStyle>>,
+	speechSegments?: Array<Segment<VoiceStyle>>,
 	lastSpeechId: number
 |} */
 
@@ -229,7 +231,10 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		this.listRef = React.createRef();
 		
 		this.lineDataProvider = new DataProvider((line1, line2) => {
-			return line1.text !== line2.text || line1.status !== line2.status;
+			return line1.text !== line2.text 
+				|| line1.isSelected !== line2.isSelected
+				|| line1.isReading !== line2.isReading
+				|| line1.isRead !== line2.isRead;
 		}); 
 		
 		const { width } = Dimensions.get("window");
@@ -287,8 +292,9 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		const lines = await startAsync/*:: <Array<Line>> */(resolve => {
 			resolve(edited.map((text, index) => ({
 				text, index,
+				isSelected: index === this.props.book.viewingIndex,
+				isReading: false, isRead: false,
 				segments: paint/*:: <TextStyle> */(text, settings.textStyle, settings.paints),
-				status: index === this.props.book.viewingIndex ? SELECTED : NONE,
 				lastSpeechId: 0
 			})));
 		});
@@ -332,33 +338,21 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	onLinePress(line/*: Line */) {
 		if (!this.state.isPlaying) {
 			this.updateLinesAndSetState({
-				[this.selectedIndex]: { status: { $set: NONE } },
-				[line.index]: { status: { $set: SELECTED } },
+				[this.selectedIndex]: { isSelected: { $set: false } },
+				[line.index]: { isSelected: { $set: true } },
 			});
 			this.selectedIndex = line.index;
 		} else {
-			// const status = this.lines[line.index].status;
-			// if (status === SCHEDULED || status === READ) {
-			// 	this.updateLinesAndSetState({ [line.index]: { status: { $set: PEEK } } });
-			// } else if (status === PEEK) {
-			// 	this.updateLinesAndSetState({ [line.index]: { status: { $set: READ } } });
-			// } else {
-				this.listRef.current.scrollToIndex(line.index, true);
-			// }
+			this.listRef.current.scrollToIndex(line.index, true);
 		}
 	}
 	
 	renderLine(_/*: number */, line/*: Line */) {
-		const { segments, status } = line;
-
 		var backgroundColor = undefined;
-		switch (status) {
-		case SELECTED: backgroundColor = settings.lineSelectedColor; break;
-		case SCHEDULED: backgroundColor = settings.lineScheduledColor; break;
-		case READING: backgroundColor = settings.lineReadingColor; break;
-		case READ: backgroundColor = settings.lineReadColor; break;
-		// case PEEK: backgroundColor = settings.linePeekColor; break;
-		}
+		if (line.isReading) backgroundColor = settings.lineReadingColor;
+		else if (line.isSelected) backgroundColor = settings.lineSelectedColor;
+		else if (line.isRead) backgroundColor = settings.lineReadColor;
+		else if (line.speechSegments) backgroundColor = settings.lineScheduledColor;
 
 		return <TouchableOpacity onPress={() => this.onLinePress(line)}>
 			<Native.Text style={{
@@ -367,7 +361,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 				backgroundColor: backgroundColor,
 			}}>{
 				// (status === PEEK ? paint(line.draft, settings.textStyle, settings.paints) : segments)
-				segments && segments.map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)
+				line.segments && line.segments.map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)
 			}</Native.Text>
 		</TouchableOpacity>;
 	}
@@ -412,7 +406,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		}
 	}
 
-	updateLinesAndSetState(spec/*: Spec<any, any> */, state/*: ?State */) {
+	updateLinesAndSetState(spec/*: Spec<Array<Line>, any> */, state/*: ?State */) {
 		this.lines = update(this.lines, spec);
 		if (typeof state === "object") {
 			this.setState({ dataProvider: this.lineDataProvider.cloneWithRows(this.lines), ...state });
@@ -432,7 +426,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			this.listRef.current.scrollToIndex(this.selectedIndex, true);
 		}
 		this.updateLinesAndSetState({
-			[this.selectedIndex]: { status: { $set: READING } }
+			[this.selectedIndex]: { isReading: { $set: true } }
 		});
 	}
 
@@ -443,11 +437,14 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		console.log(this.currentSpeechId, this.lines[this.selectedIndex].lastSpeechId);
 		if (this.currentSpeechId > this.lines[this.selectedIndex].lastSpeechId) {
 			if (this.selectedIndex !== this.lastScheduledIndex) {
-				this.updateLinesAndSetState({ [this.selectedIndex]: { status: { $set: READ } } });
+				this.updateLinesAndSetState({ 
+					[this.selectedIndex]: { isRead: { $set: true }, isReading: { $set: false }, isSelected: { $set: false } },
+					[this.selectedIndex + 1]: { isReading: { $set: true }, isSelected: { $set: true } }
+				});
 			} else {  // last one
 				this.updateLinesAndSetState({
-					[this.selectedIndex]: { status: { $set: READ } },
-					[this.selectedIndex + 1]: { status: { $set: SELECTED } }
+					[this.selectedIndex]: { isRead: { $set: true }, isReading: { $set: false }, isSelected: { $set: false } },
+					[this.selectedIndex + 1]: { isSelected: { $set: true } }
 				}, { isPlaying: false });
 			}
 			this.selectedIndex += 1;
@@ -458,10 +455,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		console.log("onTtsCancel");
 
 		const spec = {};
-		spec[this.selectedIndex] = { status: { $set: SELECTED } };
-		for (var i = this.selectedIndex + 1; i <= this.lastScheduledIndex; i += 1) {
-			spec[i] = { status: { $set: NONE } };
-		}
+		spec[this.selectedIndex] = { isReading: { $set: false } };
 		this.updateLinesAndSetState(spec, { isPlaying: false });
 	}
 	
