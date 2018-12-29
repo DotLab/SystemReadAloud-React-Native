@@ -11,18 +11,25 @@ function encodingKeyExtractor(encoding) {
 }
 
 export default class EncodingPicker extends Component {
-    renderItem({ item: encoding }) {
-        const { book, onPickEncoding } = this.props;
+	renderItem(buffer, encoding) {
+		const { book, onPickEncoding } = this.props;
+		var decoded = "";
+		try {
+			decoded = new TextDecoder(encoding).decode(buffer);
+		} catch (e) {
+			decoded = "<decoding failed>";
+		}
         return <ListItem button noIndent selected={encoding === book.encoding} onPress={() => onPickEncoding(encoding)}>
             <Body>
                 <Text>{encoding}</Text>
-                <Text note>{new TextDecoder(encoding).decode(rawToArray(book.excerptRaw))}</Text>
+                <Text note>{decoded}</Text>
             </Body>
         </ListItem>
     }
 
 	render() {
 		const { book, onCancel } = this.props;
+		const buffer = rawToArray(book.excerptRaw);
 
 		return <Container>
 			<Header>
@@ -33,7 +40,7 @@ export default class EncodingPicker extends Component {
 			<Content>
 				<FlatList
                     data={encodings}
-					renderItem={this.renderItem.bind(this)}
+					renderItem={({ item: encoding }) => this.renderItem(buffer, encoding)}
 					keyExtractor={encodingKeyExtractor}
 				/>
 			</Content>
