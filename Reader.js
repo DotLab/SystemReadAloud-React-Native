@@ -19,6 +19,7 @@ import { base64ToRaw, rawToArray } from "./bit";
 import { startAsync } from "./prom";
 import { toFullWidth, toHalfWidth } from "./fullWidth"
 
+// line: text | [ segment ] | draft | lastSpeechId
 
 const settings = {
 	// preprocess
@@ -42,21 +43,7 @@ const settings = {
 		{ regexp: " *(“.+?”) *", replace: " $1 " },
 		{ regexp: " *(‘.+?’) *", replace: " $1 " },
 	],
-	paints: [
-		{ regexp: "第.+[卷章].+", style: { fontWeight: "bold", color: "#65D9EF" } },
-		{ regexp: "“.+?”", style: { color: "#E6DB73" } },
-		// { regexp: "「.+?」", style: { color: "#E6DB73" } },
-		// { regexp: "[a-zA-Z ]+", style: { color: "#B4E1D2" } },
-		// { regexp: "[0-9]+", style: { color: "#AE81FF" } },
-		// // { regexp: "第?[零〇一二三四五六七八九十百千万亿兆]+", style: { color: "#AE81FF" } },
-		// { regexp: "《.+?》", style: { color: "#F92671" } },
-		// { regexp: "【.+?】", style: { color: "#F92671" } },
-		// { regexp: "『.+?』", style: { color: "#F92671" } },
-		// { regexp: "[我你他她它]们?", style: { fontStyle: "italic" } },
-		// { regexp: "（.+?）", style: { color: "#74705E" } },
-		// { regexp: "\\(.+?\\)", style: { color: "#74705E" } },
-	],
-
+	
 	// rendering
 	textStyle: {
 		color: "#F7F7EF",
@@ -65,18 +52,48 @@ const settings = {
 		fontFamily: "Roboto",
 		fontStyle: "normal"
 	},
-
+	paints: [
+		{ regexp: "第.+[卷章].+", style: { fontWeight: "bold", color: "#65D9EF" } },
+		{ regexp: "“.+?”", style: { color: "#E6DB73" } },
+		{ regexp: "「.+?」", style: { color: "#E6DB73" } },
+		{ regexp: "[a-zA-Z ]+", style: { color: "#B4E1D2" } },
+		{ regexp: "[0-9]+", style: { color: "#AE81FF" } },
+		// { regexp: "第?[零〇一二三四五六七八九十百千万亿兆]+", style: { color: "#AE81FF" } },
+		{ regexp: "《.+?》", style: { color: "#F92671" } },
+		{ regexp: "【.+?】", style: { color: "#F92671" } },
+		{ regexp: "『.+?』", style: { color: "#F92671" } },
+		{ regexp: "[我你他她它]们?", style: { fontStyle: "italic" } },
+		{ regexp: "（.+?）", style: { color: "#74705E" } },
+		{ regexp: "\\(.+?\\)", style: { color: "#74705E" } },
+	],
+	
 	lineSelectedColor: "#444",
 	lineScheduledColor: "#044",
-	lineReadingColor: "#400",
+	lineReadingColor: "#544",
 	lineReadColor: "#404",
+	// linePeekColor: "#440",
 	pageColor: "#000",
-
+	
 	linePaddingX: 9,
 	linePaddingY: 9,
-
+	
 	// reading
 	scheduleLength: 4,
+	voiceStyle: {
+		// voiceId: "yue-hk-x-jar-local",
+		voiceId: "cmn-cn-x-ssa-local",
+		pitch: 1.1,
+		rate: 1
+	},
+	voicePaints: [
+		{ regexp: "“.+?”", style: { pitch: 1.2 } },
+		// { regexp: "‘.+?’", style: { voiceId: "yue-hk-x-jar-local" } },
+		{ regexp: "[a-zA-Z][a-zA-Z0-9 ]*", style: { voiceId: "en-us-x-sfg#female_1-local" } },
+	],
+	voiceEdits: [
+		{ regexp: "[”（]", replace: "" },
+		{ regexp: "(.)…+", replace: "$1$1。" },
+	]
 };
 
 const NONE = "NONE";
@@ -84,14 +101,15 @@ const SELECTED = "SELECTED";
 const SCHEDULED = "SCHEDULED";
 const READING = "READING";
 const READ = "READ";
+// const PEEK = "PEEK";
 
 function edit(text, edits) {
 	edits.forEach(e => text = text.replace(new RegExp(e.regexp, "g"), e.replace));
 	return text;
 }
 
-function paint(text, paints) {
-	var segments = [ { text, style: settings.textStyle } ];
+function paint(text, style, paints) {
+	var segments = [ { text, style } ];
 	paints.forEach(p => {
 		const re = new RegExp(p.regexp, "g");
 
@@ -128,6 +146,13 @@ function paint(text, paints) {
 	});
 	// console.log(text, segments);
 	return segments;
+}
+
+function voiceStyleToParam(voiceStyle) {
+	return {
+		iosVoiceId: voiceStyle.voiceId,
+		androidParams: { KEY_PARAM_UTTERANCE_ID: voiceStyle.voiceId },
+	};
 }
 
 /*:: import type { Book } from "./App" */
@@ -223,7 +248,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		var lines = await startAsync(resolve => {
 			resolve(texts.map((text, index) => ({
 				text, index,
-				segments: paint(text, settings.paints),
+				segments: paint(text, settings.textStyle, settings.paints),
 				status: index === this.props.book.viewingIndex ? SELECTED : NONE
 			})));
 		});
@@ -271,6 +296,15 @@ export default class Reader extends Component /*:: <Props, State> */ {
 				[line.index]: { status: { $set: SELECTED } },
 			});
 			this.selectedIndex = line.index;
+		} else {
+			// const status = this.lines[line.index].status;
+			// if (status === SCHEDULED || status === READ) {
+			// 	this.updateLinesAndSetState({ [line.index]: { status: { $set: PEEK } } });
+			// } else if (status === PEEK) {
+			// 	this.updateLinesAndSetState({ [line.index]: { status: { $set: READ } } });
+			// } else {
+				this.listRef.current.scrollToIndex(line.index, true);
+			// }
 		}
 	}
 	
@@ -283,6 +317,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		case SCHEDULED: backgroundColor = settings.lineScheduledColor; break;
 		case READING: backgroundColor = settings.lineReadingColor; break;
 		case READ: backgroundColor = settings.lineReadColor; break;
+		// case PEEK: backgroundColor = settings.linePeekColor; break;
 		}
 
 		return <TouchableOpacity onPress={() => this.onLinePress(line)}>
@@ -290,7 +325,10 @@ export default class Reader extends Component /*:: <Props, State> */ {
 				paddingHorizontal: settings.linePaddingX,
 				paddingVertical: settings.linePaddingY,
 				backgroundColor: backgroundColor,
-			}}>{segments.map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)}</Native.Text>
+			}}>{
+				// (status === PEEK ? paint(line.draft, settings.textStyle, settings.paints) : segments)
+				segments.map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)
+			}</Native.Text>
 		</TouchableOpacity>;
 	}
 
@@ -304,16 +342,30 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		if (!this.state.isPlaying) {
 			this.lastScheduledIndex = Math.min(this.lines.length - 1, this.selectedIndex + settings.scheduleLength);
 
-			const spec = {};
-			for (var i = this.selectedIndex; i <= this.lastScheduledIndex; i += 1) {
-				Tts.speak(this.lines[i].text);
-				spec[i] = { status: { $set: SCHEDULED } };
-			}
+			Tts.setDefaultRate(settings.voiceStyle.rate);
+			Tts.setDefaultPitch(settings.voiceStyle.pitch);
 
+			const spec = {};
+			this.currentSpeechId = 0;
+			var lastSpeechId = -1;
+			for (var i = this.selectedIndex; i <= this.lastScheduledIndex; i += 1) {
+				const segments = paint(this.lines[i].text, settings.voiceStyle, settings.voicePaints);
+				var draft = "";
+				segments.forEach(s => {
+					// s.text = s.text.trim();
+					// if (!!s.text) {
+						const edited = edit(s.text, settings.voiceEdits);
+						draft += "[" + edited + "] ";
+						console.log(edited, s.style);
+						Tts.speak(edited, voiceStyleToParam(s.style));
+					// }
+				});
+				lastSpeechId += segments.length;
+				spec[i] = { $merge: { status: SCHEDULED, draft, lastSpeechId } };
+			}
 			this.updateLinesAndSetState(spec, { isPlaying: true });
 		} else {
-			// this.setState({ isPlaying: false });
-			Tts.stop();
+			Tts.stop();  // set isPlay in onTtsCancel
 		}
 	}
 
@@ -326,10 +378,14 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		}
 	}
 
+	willListAutoScroll() {
+		return Math.abs(this.listRef.current.findApproxFirstVisibleIndex() - this.selectedIndex) < 3;
+	}
+
 	onTtsStart() {
 		console.log("onTtsStart");
 
-		if (Math.abs(this.listRef.current.findApproxFirstVisibleIndex() - this.selectedIndex) < 2) {
+		if (this.willListAutoScroll()) {
 			this.listRef.current.scrollToIndex(this.selectedIndex, true);
 		}
 		this.updateLinesAndSetState({
@@ -340,16 +396,20 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	onTtsFinish() {
 		console.log("onTtsFinish");
 
-		if (this.selectedIndex !== this.lastScheduledIndex) {
-			this.updateLinesAndSetState({ [this.selectedIndex]: { status: { $set: READ } } });
-		} else {  // last one
-			this.updateLinesAndSetState({
-				[this.selectedIndex]: { status: { $set: READ } },
-				[this.selectedIndex + 1]: { status: { $set: SELECTED } }
-			}, { isPlaying: false });
+		this.currentSpeechId += 1;
+
+		if (this.currentSpeechId > this.lines[this.selectedIndex].lastSpeechId) {
+			if (this.selectedIndex !== this.lastScheduledIndex) {
+				this.updateLinesAndSetState({ [this.selectedIndex]: { status: { $set: READ } } });
+				// Tts.setDefaultPitch(settings.voiceStyle.pitch += 0.1);
+			} else {  // last one
+				this.updateLinesAndSetState({
+					[this.selectedIndex]: { status: { $set: READ } },
+					[this.selectedIndex + 1]: { status: { $set: SELECTED } }
+				}, { isPlaying: false });
+			}
+			this.selectedIndex += 1;
 		}
-		this.selectedIndex += 1;
-		
 	}
 
 	onTtsCancel() {
