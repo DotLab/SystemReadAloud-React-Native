@@ -57,6 +57,7 @@ const settings = {
 		{ regexp: " *([a-zA-Z0-9 ]+) *", replace: " $1 " },
 		{ regexp: "\\!", replace: "! " },
 		{ regexp: "\\?", replace: "? " },
+		{ regexp: "哄夜", replace: "咲夜" },
 	],
 
 	// split
@@ -103,20 +104,20 @@ const settings = {
 	lineColor: "#00000022",
 	lineSelectedColor: "#ffffff44",
 	lineScheduledColor: "#00ccff44",
-	lineReadingColor: "#ffcccc55",
+	lineReadingColor: "#ffcccc44",
 	lineReadColor: "#ff008822",
 	
 	// reading
-	scheduleLength: 4,
+	scheduleLength: 100,
 	voiceStyle: {
 		// voiceId: "yue-hk-x-jar-local",
 		voiceId: "cmn-cn-x-ssa-local",
 		pitch: 1.1,
-		rate: 1.1
+		rate: 1
 	},
 	voicePaints: [
 		// { regexp: "[我你他她它]们?", style: { pitch: .8 } },
-		// { regexp: "“.+?”", style: { pitch: 1.2 } },
+		{ regexp: "“.+?”", style: { pitch: .8 } },
 		// { regexp: "‘.+?’", style: { voiceId: "yue-hk-x-jar-local" } },
 		{ regexp: "[a-zA-Z][a-zA-Z0-9 ]*", style: { voiceId: "en-us-x-sfg#female_1-local" } },
 	],
@@ -124,7 +125,8 @@ const settings = {
 		{ regexp: "（.+?）", replace: "" },
 		{ regexp: "\\(.+?\\)", replace: "" },
 		{ regexp: "[“”‘’（）\\(\\)]", replace: "" },
-		{ regexp: "(.)…+", replace: "$1$1。" },
+		{ regexp: "^…+", replace: "" },
+		{ regexp: "(.)…+", replace: "$1$1$1。" },
 	]
 };
 
@@ -184,7 +186,7 @@ function voiceStyleToParam(voiceStyle/*: VoiceStyle */) {
 }
 
 function setDefaultByVoiceStyle(voiceStyle/*: VoiceStyle */) {
-	if (voiceStyle.voiceId) Tts.setDefaultVoice(voiceStyle.voiceId);
+	// if (voiceStyle.voiceId) Tts.setDefaultVoice(voiceStyle.voiceId);
 	if (voiceStyle.pitch) Tts.setDefaultPitch(voiceStyle.pitch);
 	if (voiceStyle.rate) Tts.setDefaultRate(voiceStyle.rate);
 }
@@ -381,12 +383,14 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			this.currentSpeechId = 0;
 			var lastSpeechId = -1;
 			for (var i = this.selectedIndex; i <= this.lastScheduledIndex; i += 1) {
-				const voiceSegments = paint(this.lines[i].text, settings.voiceStyle, settings.voicePaints);
-				voiceSegments.forEach(s => {
+				const segments = paint(this.lines[i].text, settings.voiceStyle, settings.voicePaints);
+				const voiceSegments = [];
+				segments.forEach(s => {
 					s.text = s.text.trim();
-					if (!!s.text) {
-						const edited = edit(s.text, settings.voiceEdits);
-						Tts.speak("　　“    " + edited + "                     ", voiceStyleToParam(s.style));
+					if (s.text.length > 1) {
+						s.text = edit(s.text, settings.voiceEdits);
+						voiceSegments.push(s);
+						Tts.speak("　　“    " + s.text + "                     ", voiceStyleToParam(s.style));
 					}
 				});
 				lastSpeechId += voiceSegments.length;
@@ -409,12 +413,13 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	}
 
 	willListAutoScroll() {
-		return this.listRef.current && Math.abs(this.listRef.current.findApproxFirstVisibleIndex() - this.selectedIndex) < 3;
+		return this.listRef.current && Math.abs(this.listRef.current.findApproxFirstVisibleIndex() + 1 - this.selectedIndex) <= 3;
 	}
 
 	onTtsStart() {
 		console.log("onTtsStart");
 
+		console.log(this.lines[this.selectedIndex].voiceSegments);
 		if (this.willListAutoScroll()) {
 			this.listRef.current.scrollToIndex(this.selectedIndex, true);
 		}
@@ -466,14 +471,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 					<Icon name="close" />
 				</Button></Left>
 				<Body><Title>{props.book.title}</Title></Body>
-				<Right><Button transparent onPress={() => {
-					this.listRef.current.scrollToIndex(98, false);
-					this.listRef.current.scrollToIndex(100, true);
-					// this.listRef.current.scr
-					// this.lines[100] = { ...this.lines[100], text: this.lines[0].text + "@" };
-					// this.lines[100] += "@";
-					this.setState({ dataProvider: this.lineDataProvider.cloneWithRows(this.lines) })
-				}}><Icon name="menu" /></Button></Right>
+				<Right><Button transparent><Icon name="menu" /></Button></Right>
 			</Header>
 			<View style={{ flex: 1, backgroundColor: settings.pageColor }}>
 				{state.loading ? <Spinner /> : <RecyclerListView
@@ -488,7 +486,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 				{state.loading ? <FooterTab>
 					<Button active><Text>{state.loading}</Text></Button>
 				</FooterTab> : <FooterTab>
-					<Button>
+					<Button onPress={() => this.listRef.current.scrollToIndex(this.selectedIndex)}>
 						<Text>{(this.selectedIndex / this.lines.length * 100).toFixed(1).toString()}%</Text>
 						{this.lastScheduledIndex ? <Text>
 							Loc {this.selectedIndex.toString()}/{this.lastScheduledIndex.toString()} ({this.lines.length.toString()})
