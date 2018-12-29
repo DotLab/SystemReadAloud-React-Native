@@ -19,13 +19,13 @@ let toHalf = set => c => set.delta ?
 let re = (set, way) => set[way + "RE"] || new RegExp("[" + set[way] + "]", "g");
 let sets = Object.keys(charsets).map(i => charsets[i]);
 
-// export function toFullWidth(str0) { 
-// 	return sets.reduce((str,set) => str.replace(re(set, "half"), toFull(set)), str0);
-// }
-// export function toHalfWidth(str0) { 
-// 	return sets.reduce((str,set) => str.replace(re(set, "full"), toHalf(set)), str0);
-// }
+export function toFullWidth(str0) { 
+	return sets.reduce((str,set) => str.replace(re(set, "half"), toFull(set)), str0);
+}
+export function toHalfWidth(str0) { 
+	return sets.reduce((str,set) => str.replace(re(set, "full"), toHalf(set)), str0);
+}
 
-var shiftCharCode = Δ => c => String.fromCharCode(c.charCodeAt(0) + Δ);
-export function toFullWidth(str) { return str.replace(/[!-~]/g, shiftCharCode(0xFEE0)); }
-export function toHalfWidth(str) { return str.replace(/[！-～]/g, shiftCharCode(-0xFEE0)); }
+// var shiftCharCode = Δ => c => String.fromCharCode(c.charCodeAt(0) + Δ);
+// export function toFullWidth(str) { return str.replace(/[!-~]/g, shiftCharCode(0xFEE0)); }
+// export function toHalfWidth(str) { return str.replace(/[！-～]/g, shiftCharCode(-0xFEE0)); }

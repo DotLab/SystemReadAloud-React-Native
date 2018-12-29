@@ -55,13 +55,14 @@ const settings = {
 	preEdits: [
 		{ regexp: "★☆.*☆★", replace: "" },
 		{ regexp: " *([a-zA-Z0-9 ]+) *", replace: " $1 " },
-		{ regexp: "\\!", replace: "! " },
-		{ regexp: "\\?", replace: "? " },
+		// { regexp: "\\!", replace: "! " },
+		// { regexp: "\\?", replace: "? " },
 	],
 
 	// split
 	splitRegexp: " *[\\n\\r]+ *",
 	removeEmptyLines: true,
+	measuringOffset: 0,
 
 	// edit
 	edits: [
@@ -79,28 +80,28 @@ const settings = {
 		fontStyle: "normal"
 	},
 	paints: [
-		{ regexp: "第.+[卷章].+", style: { fontWeight: "bold", color: "#65D9EF" } },
-		{ regexp: "“.+?”", style: { color: "#E6DB73" } },
-		{ regexp: "「.+?」", style: { color: "#E6DB73" } },
-		{ regexp: "[a-zA-Z ]+", style: { color: "#B4E1D2" } },
-		{ regexp: "[0-9]+", style: { color: "#AE81FF" } },
-		// { regexp: "第?[零〇一二三四五六七八九十百千万亿兆]+", style: { color: "#AE81FF" } },
-		{ regexp: "《.+?》", style: { color: "#F92671" } },
-		{ regexp: "【.+?】", style: { color: "#F92671" } },
-		{ regexp: "『.+?』", style: { color: "#F92671" } },
-		{ regexp: "[我你他她它]们?", style: { fontStyle: "italic" } },
-		{ regexp: "（.+?）", style: { color: "#74705E" } },
-		{ regexp: "\\(.+?\\)", style: { color: "#74705E" } },
+		// { regexp: "第.+[卷章].+", style: { fontWeight: "bold", color: "#65D9EF" } },
+		// { regexp: "“.+?”", style: { color: "#E6DB73" } },
+		// { regexp: "「.+?」", style: { color: "#E6DB73" } }	,
+		// { regexp: "[a-zA-Z ]+", style: { color: "#B4E1D2" } },
+		// { regexp: "[0-9]+", style: { color: "#AE81FF" } },
+		// // { regexp: "第?[零〇一二三四五六七八九十百千万亿兆]+", style: { color: "#AE81FF" } },
+		// { regexp: "《.+?》", style: { color: "#F92671" } },
+		// { regexp: "【.+?】", style: { color: "#F92671" } },
+		// { regexp: "『.+?』", style: { color: "#F92671" } },
+		// { regexp: "[我你他她它]们?", style: { fontStyle: "italic" } },
+		// { regexp: "（.+?）", style: { color: "#74705E" } },
+		// { regexp: "\\(.+?\\)", style: { color: "#74705E" } },
 	],
 	
-	lineSelectedColor: "#444",
-	lineScheduledColor: "#034",
-	lineReadingColor: "#544",
-	lineReadColor: "#201",
+	lineSelectedColor: "#ffffff44",
+	lineScheduledColor: "#00ccff44",
+	lineReadingColor: "#ffcccc55",
+	lineReadColor: "#ff008822",
 	pageColor: "#000",
 	
 	linePaddingX: 9,
-	linePaddingY: 9,
+	linePaddingY: 10,
 	
 	// reading
 	scheduleLength: 4,
@@ -117,7 +118,7 @@ const settings = {
 		{ regexp: "[a-zA-Z][a-zA-Z0-9 ]*", style: { voiceId: "en-us-x-sfg#female_1-local" } },
 	],
 	voiceEdits: [
-		{ regexp: "[“”‘’（）]", replace: "" },
+		{ regexp: "[“”‘’（）\\(\\)]", replace: "" },
 		{ regexp: "(.)…+", replace: "$1$1。" },
 	]
 };
@@ -208,14 +209,15 @@ function setDefaultByVoiceStyle(voiceStyle/*: VoiceStyle */) {
 	isReading: boolean,
 	isRead: boolean,
 	text: string,
-	segments?: Array<Segment<TextStyle>>,
-	speechSegments?: Array<Segment<VoiceStyle>>,
+	textSegments?: Array<Segment<TextStyle>>,
+	voiceSegments?: Array<Segment<VoiceStyle>>,
 	lastSpeechId: number
 |} */
 
 export default class Reader extends Component /*:: <Props, State> */ {
 	/*:: screenWidth: number */
 	/*:: listRef: ElementRef<RecyclerListView> */
+
 	/*:: lines: Array<Line> */
 	/*:: lineDataProvider: DataProvider */
 	/*:: lineLayoutProvider: LayoutProvider */
@@ -285,32 +287,27 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		
 		this.setState({ loading: "Editing texts..." });
 		const edited = await startAsync/*:: <Array<string>> */(resolve => {
-			resolve(texts.map(text => edit(text, settings.edits)));
+			resolve(texts.map(text => edit(text, settings.edits)))
 		});
 		
-		this.setState({ loading: "Painting lines..." });
-		const lines = await startAsync/*:: <Array<Line>> */(resolve => {
-			resolve(edited.map((text, index) => ({
-				text, index,
-				isSelected: index === this.props.book.viewingIndex,
-				isReading: false, isRead: false,
-				segments: paint/*:: <TextStyle> */(text, settings.textStyle, settings.paints),
-				lastSpeechId: 0
-			})));
-		});
+		const lines = edited.map((text, index) => ({
+			text, index,
+			isSelected: index === this.props.book.viewingIndex, isReading: false, isRead: false,
+			lastSpeechId: 0
+		}));
 		this.lines = lines;
 
 		this.setState({ loading: "Measuring lines..." });
-		this.measuringResults = await MeasureText.heights({
-			...settings.textStyle,
-			texts,
-			width: this.screenWidth - settings.linePaddingX * 2,
-		});
-		// this.measuringResults = await TextSize.flatHeights({
+		// this.measuringResults = await MeasureText.heights({
 		// 	...settings.textStyle,
-		// 	text: texts,
+		// 	texts,
 		// 	width: this.screenWidth - settings.linePaddingX * 2,
 		// });
+		this.measuringResults = await TextSize.flatHeights({
+			...settings.textStyle,
+			text: texts,
+			width: this.screenWidth - settings.linePaddingX * 2,
+		});
 
 		this.setState({
 			loading: "Waiting for TTS...",
@@ -352,7 +349,10 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		if (line.isReading) backgroundColor = settings.lineReadingColor;
 		else if (line.isSelected) backgroundColor = settings.lineSelectedColor;
 		else if (line.isRead) backgroundColor = settings.lineReadColor;
-		else if (line.speechSegments) backgroundColor = settings.lineScheduledColor;
+		else if (line.voiceSegments) backgroundColor = settings.lineScheduledColor;
+
+		// paint as needed
+		if (!line.textSegments) line.textSegments = paint/*:: <TextStyle> */(line.text, settings.textStyle, settings.paints)
 
 		return <TouchableOpacity onPress={() => this.onLinePress(line)}>
 			<Native.Text style={{
@@ -361,7 +361,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 				backgroundColor: backgroundColor,
 			}}>{
 				// (status === PEEK ? paint(line.draft, settings.textStyle, settings.paints) : segments)
-				line.segments && line.segments.map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)
+				line.textSegments.map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)
 			}</Native.Text>
 		</TouchableOpacity>;
 	}
