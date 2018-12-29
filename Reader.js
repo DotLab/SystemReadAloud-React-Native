@@ -86,12 +86,13 @@ const settings = {
 		rate: 1
 	},
 	voicePaints: [
+		{ regexp: "[我你他她它]们?", style: { pitch: .8 } },
 		{ regexp: "“.+?”", style: { pitch: 1.2 } },
 		// { regexp: "‘.+?’", style: { voiceId: "yue-hk-x-jar-local" } },
 		{ regexp: "[a-zA-Z][a-zA-Z0-9 ]*", style: { voiceId: "en-us-x-sfg#female_1-local" } },
 	],
 	voiceEdits: [
-		{ regexp: "[”（]", replace: "" },
+		{ regexp: "[“”‘’（）]", replace: "" },
 		{ regexp: "(.)…+", replace: "$1$1。" },
 	]
 };
@@ -352,13 +353,13 @@ export default class Reader extends Component /*:: <Props, State> */ {
 				const segments = paint(this.lines[i].text, settings.voiceStyle, settings.voicePaints);
 				var draft = "";
 				segments.forEach(s => {
-					// s.text = s.text.trim();
-					// if (!!s.text) {
+					s.text = s.text.trim();
+					if (!!s.text) {
 						const edited = edit(s.text, settings.voiceEdits);
 						draft += "[" + edited + "] ";
 						console.log(edited, s.style);
-						Tts.speak(edited, voiceStyleToParam(s.style));
-					// }
+						Tts.speak("　　“    " + edited + "                     ", voiceStyleToParam(s.style));
+					}
 				});
 				lastSpeechId += segments.length;
 				spec[i] = { $merge: { status: SCHEDULED, draft, lastSpeechId } };
@@ -366,6 +367,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			this.updateLinesAndSetState(spec, { isPlaying: true });
 		} else {
 			Tts.stop();  // set isPlay in onTtsCancel
+			this.setState({ isPlaying: false });
 		}
 	}
 
@@ -397,7 +399,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		console.log("onTtsFinish");
 
 		this.currentSpeechId += 1;
-
+		console.log(this.currentSpeechId, this.lines[this.selectedIndex].lastSpeechId);
 		if (this.currentSpeechId > this.lines[this.selectedIndex].lastSpeechId) {
 			if (this.selectedIndex !== this.lastScheduledIndex) {
 				this.updateLinesAndSetState({ [this.selectedIndex]: { status: { $set: READ } } });
