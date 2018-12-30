@@ -90,6 +90,7 @@ async function importBook(title, uri, basePath) {
 	excerptRaw: string,
 	viewingLine: string,
 	viewingIndex: number,
+	selectedIndex: number,
 	lineCount: number,
 } */
 

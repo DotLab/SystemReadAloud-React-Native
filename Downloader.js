@@ -12,7 +12,8 @@ const TEMP = "TEMP";
 
 /*:: type Props = {
 	basePath: string,
-	onClose: (string, string) => any
+	onFinish: (string, string) => any,
+	onClose: () => any
 } */
 
 /*:: type State = {
