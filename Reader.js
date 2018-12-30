@@ -18,6 +18,8 @@ import { base64ToRaw, rawToArray } from "./bit";
 import { startAsync } from "./prom";
 import { toFullWidth, toHalfWidth } from "./fullWidth"
 
+import TextConfigPanel from "./TextConfigPanel";
+
 /*:: import type { Book } from "./App" */
 /*:: import type { ElementRef } from "react" */
 /*:: import type { Spec } from "immutability-helper" */
@@ -47,6 +49,8 @@ import { toFullWidth, toHalfWidth } from "./fullWidth"
 	pitch?: number,
 	rate?: number
 |} */
+
+const TEXT_CONFIG_PANEL = "TEXT_CONFIG_PANEL";
 
 const settings = {
 	// preprocess
@@ -242,6 +246,8 @@ function getValue(obj/*: ?Object */, keys/*: Array<string|number> */, def/*: any
 	lines?: Array<string>,
 	dataProvider?: DataProvider,
 	isPlaying?: boolean,
+	page?: string,
+	pageProps?: Object,
 |} */
 
 /*:: type Line = {|
@@ -259,6 +265,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	/*:: screenWidth: number */
 	/*:: listRef: ElementRef<RecyclerListView> */
 
+	/*:: text: string */
 	/*:: lines: Array<Line> */
 	/*:: lineDataProvider: DataProvider */
 	/*:: lineLayoutProvider: LayoutProvider */
@@ -304,12 +311,12 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		const base64 = await Fs.readFile(props.basePath + props.book.hash, "base64");
 
 		this.setState({ loading: "Decoding text..." });
-		const text = await startAsync/*:: <string> */(resolve => {
+		this.text = await startAsync/*:: <string> */(resolve => {
 			const array = rawToArray(base64ToRaw(base64));
 			resolve(new TextDecoder(props.book.encoding).decode(array));
 		});
 
-		this.parseText(text);
+		this.parseText(this.text);
 	}
 
 	async parseText(text/*: string */) {
@@ -380,6 +387,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		
 		// test
 		// this.onPlayButtonPress();
+		this.onTextConfigButtonPress();
 	}
 
 	onLinePress(line/*: Line */) {
@@ -547,18 +555,33 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		scroll.scrollToIndex(this.selectedIndex, true); 
 	}
 
+	onTextConfigButtonPress() {
+		this.setState({
+			page: TEXT_CONFIG_PANEL,
+			pageProps: {
+				onClose: () => {
+					this.setState({ page: undefined });
+				}
+			}
+		});
+	}
+
 	render() {
 		const state = this.state;
 		const props = this.props;
+
+		switch (state.page) {
+		case TEXT_CONFIG_PANEL: return <TextConfigPanel {...state.pageProps} />;
+		}
+
 		var voiceStyle = getValue(this, [ "lines", this.selectedIndex, "voiceSegments", this.currentSpeechId, "style" ], settings.voiceStyle);
-		
 		return <Container>
 			<Header>
 				<Left><Button transparent onPress={this.onBackButtonPress.bind(this)}>
 					<Icon name="close" />
 				</Button></Left>
 				<Body><Title>{props.book.title}</Title></Body>
-				<Right><Button transparent><Icon name="menu" /></Button></Right>
+				<Right><Button transparent onPress={this.onTextConfigButtonPress.bind(this)}><Icon name="color-palette" /></Button></Right>
 			</Header>
 			<View style={{ flex: 1, backgroundColor: settings.pageColor }}>
 				{state.loading ? <Spinner /> : <RecyclerListView
