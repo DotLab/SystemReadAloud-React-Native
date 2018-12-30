@@ -30,13 +30,6 @@ const ENCODING_PICKER = "ENCODING_PICKER";
 const READER = "READER";
 const DOWNLOADER = "DOWNLOADER";
 
-const BookListItemActionSheetConfig = {
-	options: [ "Config", "Encoding", "Delete", "Cancel" ],
-	destructiveButtonIndex: 2,
-	cancelButtonIndex: 3,
-	title: "Select an option:"
-};
-
 function bookComparer(a /*: Book */, b /*: Book */) {
 	return a.sortTitle < b.sortTitle ? -1 : 1;
 }
@@ -247,12 +240,7 @@ class App extends Component /*:: <Props, State> */ {
 				</Text>
 			</Body>
 			<Right>
-				<Button small onPress={() => {
-					ActionSheet.show(
-						Object.assign(BookListItemActionSheetConfig, { title: book.title }), 
-						index => this.onBookListItemActionSheetSelect(book, index)
-					);
-				}}><Text style={{ fontSize: 10 }} numberOfLines={1}>{book.encoding}</Text></Button>
+				<Button small onPress={() => this.pickBookEncoding(book)}><Text style={{ fontSize: 10 }} numberOfLines={1}>{book.encoding}</Text></Button>
 			</Right>
 		</ListItem>;
 	}
