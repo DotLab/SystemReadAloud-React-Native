@@ -1,3 +1,5 @@
+// @flow
+
 import React, { Component } from "react";
 import { View, FlatList, Linking, AsyncStorage, Alert } from "react-native";
 import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Text, List, ListItem, Footer, FooterTab } from "native-base";
@@ -6,12 +8,20 @@ import encodings from "./encodings";
 import { TextDecoder } from "text-encoding";
 import { rawToArray } from "./bit";
 
-function encodingKeyExtractor(encoding) {
+/*:: import type { Book } from "./App" */
+
+function encodingKeyExtractor(encoding/*: string */) /*: string */ {
 	return encoding;
 }
 
-export default class EncodingPicker extends Component {
-	renderItem(buffer, encoding) {
+/*:: type Props = {
+	book: Book,
+	onPickEncoding: (string) => any,
+	onCancel: () => any
+} */
+
+export default class EncodingPicker extends Component /*:: <Props> */ {
+	renderItem(buffer/*: Uint8Array */, encoding/*: string */) {
 		const { book, onPickEncoding } = this.props;
 		var decoded = "";
 		try {
