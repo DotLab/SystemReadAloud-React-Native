@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import { View, FlatList, Linking, Alert } from "react-native";
-import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Text, List, ListItem, Footer, FooterTab, Spinner, ActionSheet, Root } from "native-base";
+import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Text, List, ListItem, Footer, FooterTab, Spinner, ActionSheet, Root, Item, Input } from "native-base";
 
 import Store from "react-native-simple-store";
 import Tts from "react-native-tts";
@@ -10,6 +10,7 @@ import Fs from "react-native-fs";
 
 import md5 from "js-md5";
 import { TextDecoder } from "text-encoding";
+import update from "immutability-helper";
 
 import { base64ToRaw, rawToArray } from "./bit";
 import { parseZhNumber, fixNumberWidth } from "./zhNumber";
@@ -44,6 +45,10 @@ function bookKeyExtractor(x /*: Book */) {
 	return x.hash;
 }
 
+function generateSortTitle(title) {
+	return title.replace(/([零一二三四五六七八九十]+)/, seg => fixNumberWidth(parseZhNumber(seg)));
+}
+
 async function importBook(title, uri, basePath) {
 	console.log("importing", title, uri);
 	
@@ -55,7 +60,7 @@ async function importBook(title, uri, basePath) {
 	await Store.update(LIBRARY, { [hash]: {
 		title,
 		originalTitle: title,
-		sortTitle: title.replace(/([零一二三四五六七八九十]+)/, seg => fixNumberWidth(parseZhNumber(seg))),
+		sortTitle: generateSortTitle(title),
 		encoding: encodings[0],
 		hash,
 		size: raw.length,
@@ -68,18 +73,18 @@ async function importBook(title, uri, basePath) {
 	} });
 }
 
-/*:: type Props = {
-	
-} */
+/*:: type Props = {} */
 
 /*:: type State = {
 	importedBookTitle?: string,
 	books?: Array<Book>,
 	page?: string,
-	pageProps?: Object
+	pageProps?: Object,
+	isEditMode: boolean
 } */
 
 /*:: export type Book = {
+	index: number,
 	title: string,
 	originalTitle: string,
 	sortTitle: string,
@@ -104,7 +109,7 @@ class App extends Component /*:: <Props, State> */ {
 
 	constructor() {
 		super();
-		this.state = {};
+		this.state = { isEditMode: false };
 		this.basePath = Fs.DocumentDirectoryPath + "/";
 		this.listRef = React.createRef();
 	}
@@ -133,10 +138,11 @@ class App extends Component /*:: <Props, State> */ {
 
 		const library /*: Library */ = await Store.get(LIBRARY);
 		const books /*: Array<any> */ = Object.values(library).filter(x => x);
-		// console.log(books);
 		books.sort(bookComparer);
+		books.forEach((x, i) => x.index = i);
 
 		this.setState({ books });
+
 		const offset = await Store.get(BOOK_LIST_OFFSET);
 		this.listRef.current.scrollToOffset({ offset, animated: false });
 
@@ -162,12 +168,20 @@ class App extends Component /*:: <Props, State> */ {
 		});
 	}
 
-	async deleteBook(book /*: Book */) {
+	deleteBook(book /*: Book */) {
 		if (book.originalTitle === this.state.importedBookTitle) this.setState({ importedBookTitle: undefined });
 
-		await Store.update(LIBRARY, { [book.hash]: null });
+		Store.update(LIBRARY, { [book.hash]: null });
 		Fs.unlink(this.basePath + book.hash);
-		this.reloadLibrary();
+		this.setState(update(this.state, { books: { $splice: [ [ book.index, 1 ] ] } }));
+	}
+	
+	changeBookTitle(book, title) {
+		const sortTitle = generateSortTitle(title);
+		Store.update(LIBRARY, { [book.hash]: { title, sortTitle } });
+		this.setState(update(this.state, { books: { [book.index]: {
+			title: { $set: title }, sortTitle: { $set: sortTitle }
+		} } }));
 	}
 
 	onBookListItemActionSheetSelect(book /*: Book */, index) {
@@ -184,18 +198,38 @@ class App extends Component /*:: <Props, State> */ {
 			pageProps: {
 				book,
 				basePath: this.basePath,
-				onClose: async (viewingLine, viewingIndex, selectedIndex, lineCount) => {
-					this.setState({ page: undefined });
-					await Store.update(LIBRARY, { [book.hash]: {
+				onClose: (viewingLine, viewingIndex, selectedIndex, lineCount) => {
+					Store.update(LIBRARY, { [book.hash]: {
 						viewingLine, viewingIndex, selectedIndex, lineCount,
 					} });
-					this.reloadLibrary();
+					// this.setState({ page: undefined });
+					this.setState(update(this.state, { page: { $set: undefined }, books: { [book.index]: {
+						viewingLine: { $set: viewingLine },
+						viewingIndex: { $set: viewingIndex },
+						selectedIndex: { $set: selectedIndex },
+						lineCount: { $set: lineCount },
+					} } }));
 				}
 			}
 		});
 	}
 
-	renderBookListItem({ item: book }) {
+	renderBookListItem(book/*: Book */, isEditMode/*: boolean */) {
+		if (isEditMode) {
+			return <ListItem noIndent style={{ paddingLeft: 0 }}>
+				<Body><Item regular><Input 
+					style={{ fontSize: 14, height: 40 }} 
+					value={book.title} 
+					onChangeText={text => this.changeBookTitle(book, text)}
+				/></Item></Body>
+				<Right>
+					<Button danger small onPress={() => this.deleteBook(book)}>
+						<Text style={{ fontSize: 10 }}>Delete</Text>
+					</Button>
+				</Right>
+			</ListItem>
+		}
+
 		return <ListItem 
 			button noIndent 
 			style={{ paddingLeft: 0 }}
@@ -240,6 +274,11 @@ class App extends Component /*:: <Props, State> */ {
 		});
 	}
 
+	onEditButtonPress() {
+		this.setState({ isEditMode: !this.state.isEditMode });
+		if (!this.state.isEditMode) this.reloadLibrary();
+	}
+
 	render() {
 		const state = this.state;
 
@@ -252,11 +291,11 @@ class App extends Component /*:: <Props, State> */ {
 		return <Container>
 			<Header>
 				<Left>
-					<Button transparent onPress={this.reloadLibrary.bind(this)}><Icon name="refresh" /></Button>
+					<Button transparent onPress={this.onEditButtonPress.bind(this)}><Icon name={state.isEditMode ? "close" : "create"} /></Button>
 				</Left>
 				<Body><Title>Library</Title></Body>
 				<Right>
-					<Button transparent onPress={this.onAddButtonPress.bind(this)}><Icon name="download" /></Button>
+					{!state.isEditMode && <Button transparent onPress={this.onAddButtonPress.bind(this)}><Icon name="download" /></Button>}
 				</Right>
 			</Header>
 			
@@ -265,7 +304,7 @@ class App extends Component /*:: <Props, State> */ {
 					ref={this.listRef}
 					data={state.books}
 					keyExtractor={bookKeyExtractor}
-					renderItem={this.renderBookListItem.bind(this)}
+					renderItem={({ item }) => this.renderBookListItem(item, state.isEditMode)}
 					onScrollEndDrag={e => Store.save(BOOK_LIST_OFFSET, e.nativeEvent.contentOffset.y)}
 					onMomentumScrollEnd={e => Store.save(BOOK_LIST_OFFSET, e.nativeEvent.contentOffset.y)}
 				/> : <Spinner />}

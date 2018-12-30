@@ -581,7 +581,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 							{this.selectedIndex}/{this.lines.length - 1}
 						</Text>}
 					</Button>
-					<Button active onPress={this.onPlayButtonPress.bind(this)}><Icon type="MaterialIcons" name={state.isPlaying ? "pause" : "play-arrow"} /></Button>
+					<Button active onPress={this.onPlayButtonPress.bind(this)}><Icon name={state.isPlaying ? "pause" : "play"} /></Button>
 					<Button>
 						<Text numberOfLines={1}>{voiceStyle.voiceId}</Text>
 						{voiceStyle.pitch && voiceStyle.rate && <Text numberOfLines={1}>P{voiceStyle.pitch.toFixed(1)}/R{voiceStyle.rate.toFixed(1)}</Text>}
