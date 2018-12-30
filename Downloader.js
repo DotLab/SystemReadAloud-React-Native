@@ -50,7 +50,7 @@ export default class Downloader extends Component /*:: <Props, State> */ {
 		await res.promise;
 
 		this.setState({ status: "Copying..." });
-		this.props.onClose(this.title, path);
+		this.props.onFinish(this.title, path);
 	}
 
 	onProgress(res/*: any */) {

@@ -227,10 +227,13 @@ class App extends Component /*:: <Props, State> */ {
 			page: DOWNLOADER,
 			pageProps: {
 				basePath: this.basePath,
-				onClose: async (title, path) => {
+				onFinish: async (title, path) => {
 					this.setState({ page: undefined, importedBookTitle: title });
 					await importBook(title, path, this.basePath);
 					this.reloadLibrary();
+				},
+				onClose: () => {
+					this.setState({ page: undefined });
 				}
 			}
 		});
