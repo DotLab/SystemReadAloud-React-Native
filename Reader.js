@@ -84,7 +84,7 @@ const settings = {
 	textPaints: [
 		{ regexp: "第.+[卷章].+", style: { fontWeight: "bold", color: "#65D9EF" } },
 		{ regexp: "“.+?”", style: { color: "#E6DB73" } },
-		{ regexp: "「.+?」", style: { color: "#E6DB73" } }	,
+		{ regexp: "「.+?」", style: { color: "#E6DB73" } },
 		{ regexp: "[a-zA-Z ]+", style: { color: "#B4E1D2" } },
 		{ regexp: "[0-9]+", style: { color: "#AE81FF" } },
 		{ regexp: "[零〇一二两三四五六七八九十百千万亿兆]+", style: { color: "#AE81FF" } },
@@ -99,7 +99,7 @@ const settings = {
 	linePaddingX: 0,
 	linePaddingY: 15,
 	lineSpacing: 0,
-
+	
 	pageColor: "#000",
 	lineColor: "#00000022",
 	lineSelectedColor: "#ffffff44",
@@ -110,21 +110,22 @@ const settings = {
 	// reading
 	scheduleLength: 100,
 	voiceStyle: {
-		// voiceId: "yue-hk-x-jar-local",
 		voiceId: "cmn-cn-x-ssa-local",
-		pitch: 1.1,
-		rate: 1
+		pitch: .9,
+		rate: .8
 	},
 	voicePaints: [
-		// { regexp: "[我你他她它]们?", style: { pitch: .8 } },
-		{ regexp: "“.+?”", style: { pitch: .8 } },
-		// { regexp: "‘.+?’", style: { voiceId: "yue-hk-x-jar-local" } },
+		{ regexp: "第.+[卷章].+", style: { pitch: .8, rate: 1 } },
+		{ regexp: "“.+?”", style: { pitch: 1.4, rate: .9 } },
+		{ regexp: "「.+?」", style: { pitch: 1.4, rate: .9 } },
+		{ regexp: "‘.+?’", style: { pitch: 1.2, rate: .8 } },
+		{ regexp: "『.+?』", style: { pitch: 1.2, rate: .8 } },
+		{ regexp: "（.+?）", style: { pitch: .6, rate: .8 } },
+		{ regexp: "\\(.+?\\)", style: { pitch: .6, rate: .8 } },
 		{ regexp: "[a-zA-Z][a-zA-Z0-9 ]*", style: { voiceId: "en-us-x-sfg#female_1-local" } },
 	],
 	voiceEdits: [
-		{ regexp: "（.+?）", replace: "" },
-		{ regexp: "\\(.+?\\)", replace: "" },
-		{ regexp: "[“”‘’（）\\(\\)]", replace: "" },
+		{ regexp: "[“”‘’（）\\(\\)「」『』]", replace: "" },
 		{ regexp: "^…+", replace: "" },
 		{ regexp: "(.)…+", replace: "$1$1$1。" },
 	]
@@ -185,10 +186,33 @@ function voiceStyleToParam(voiceStyle/*: VoiceStyle */) {
 	};
 }
 
-function setDefaultByVoiceStyle(voiceStyle/*: VoiceStyle */) {
+function setTtsVoiceStyle(voiceStyle/*: VoiceStyle */) {
 	// if (voiceStyle.voiceId) Tts.setDefaultVoice(voiceStyle.voiceId);
 	if (voiceStyle.pitch) Tts.setDefaultPitch(voiceStyle.pitch);
 	if (voiceStyle.rate) Tts.setDefaultRate(voiceStyle.rate);
+}
+
+function buildVoiceSegments(text/*: string */, voiceStyle/*: VoiceStyle */, voicePaints/*: Array<Paint<VoiceStyle>> */, voiceEdits/*: Array<Edit> */) /*: Array<Segment<VoiceStyle>> */ {
+	const voiceSegments = [];
+	paint(text, voiceStyle, voicePaints).forEach(s => {
+		s.text = s.text.trim();
+		if (s.text.length > 1) {
+			s.text = edit(s.text, voiceEdits);
+			voiceSegments.push(s);
+		}
+	});
+	return voiceSegments;
+}
+
+function getValue(obj/*: ?Object */, keys/*: Array<string|number> */, def/*: any */, currentDepth/*: ?number */) /*: any */ {
+	if (!obj) return def;
+	else if (currentDepth === undefined || currentDepth === null) {  // direct call
+		return getValue(obj, keys, def, 0);
+	} else if (currentDepth >= keys.length) {  // base case
+		return obj;
+	} else {  // recursive
+		return getValue(obj[keys[currentDepth]], keys, def, currentDepth + 1);
+	}
 }
 
 /*:: type Props = {|
@@ -367,36 +391,37 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	}
 
 	onBackButtonPress() {
+		Tts.removeAllListeners("tts-start");
+		Tts.removeAllListeners("tts-finish");
+		Tts.removeAllListeners("tts-cancel");
+		Tts.stop();
+
 		const viewingIndex = this.listRef.current.findApproxFirstVisibleIndex();
 		const viewingLine = this.lines[viewingIndex].text.trim();
 		this.props.onClose(viewingLine, viewingIndex, this.lines.length);
+	}
+
+	speakNextSegment() {
+		if (this.lines[this.selectedIndex].voiceSegments) {
+			const segment = this.lines[this.selectedIndex].voiceSegments[this.currentSpeechId];
+			console.log(segment);
+			setTtsVoiceStyle(segment.style);
+			Tts.speak("　　“    " + segment.text + "                     ", voiceStyleToParam(segment.style));
+		}
 	}
 
 	onPlayButtonPress() {
 		if (!this.state.isPlaying) {
 			this.lastScheduledIndex = Math.min(this.lines.length - 1, this.selectedIndex + settings.scheduleLength);
 			// if (this.listRef.current) this.listRef.current.scrollToIndex(this.selectedIndex);
-
-			setDefaultByVoiceStyle(settings.voiceStyle);
-
-			const spec = {};
+			
+			const voiceSegments = buildVoiceSegments(this.lines[this.selectedIndex].text, settings.voiceStyle, settings.voicePaints, settings.voiceEdits);
+			this.updateLinesAndSetState({ 
+				[this.selectedIndex]: { $merge: { voiceSegments, lastSpeechId: voiceSegments.length - 1 } } 
+			}, { isPlaying: true });
+			
 			this.currentSpeechId = 0;
-			var lastSpeechId = -1;
-			for (var i = this.selectedIndex; i <= this.lastScheduledIndex; i += 1) {
-				const segments = paint(this.lines[i].text, settings.voiceStyle, settings.voicePaints);
-				const voiceSegments = [];
-				segments.forEach(s => {
-					s.text = s.text.trim();
-					if (s.text.length > 1) {
-						s.text = edit(s.text, settings.voiceEdits);
-						voiceSegments.push(s);
-						Tts.speak("　　“    " + s.text + "                     ", voiceStyleToParam(s.style));
-					}
-				});
-				lastSpeechId += voiceSegments.length;
-				spec[i] = { $merge: { voiceSegments, lastSpeechId } };
-			}
-			this.updateLinesAndSetState(spec, { isPlaying: true });
+			this.speakNextSegment();
 		} else {
 			Tts.stop();  // set isPlay in onTtsCancel
 			this.setState({ isPlaying: false });
@@ -419,7 +444,6 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	onTtsStart() {
 		console.log("onTtsStart");
 
-		console.log(this.lines[this.selectedIndex].voiceSegments);
 		if (this.willListAutoScroll()) {
 			this.listRef.current.scrollToIndex(this.selectedIndex, true);
 		}
@@ -433,22 +457,31 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 		this.currentSpeechId += 1;
 		console.log(this.currentSpeechId, this.lines[this.selectedIndex].lastSpeechId);
+
 		if (this.currentSpeechId > this.lines[this.selectedIndex].lastSpeechId) {
+			this.currentSpeechId = 0;
 			this.selectedIndex += 1;
+
+			const voiceSegments = buildVoiceSegments(this.lines[this.selectedIndex].text, settings.voiceStyle, settings.voicePaints, settings.voiceEdits);
+			this.lines = update(this.lines, { 
+				[this.selectedIndex - 1]: { isRead: { $set: true }, isReading: { $set: false }, isSelected: { $set: false } },
+				[this.selectedIndex]: { $merge: { voiceSegments, lastSpeechId: voiceSegments.length - 1 } } 
+			});
+
 			if (this.selectedIndex <= this.lastScheduledIndex) {
 				this.updateLinesAndSetState({ 
-					[this.selectedIndex - 1]: { isRead: { $set: true }, isReading: { $set: false }, isSelected: { $set: false } },
 					[this.selectedIndex]: { isReading: { $set: true }, isSelected: { $set: true } }
 				});
 			} else {  // last one
 				this.lastScheduledIndex = 0;
 				this.currentSpeechId = 0;
 				this.updateLinesAndSetState({
-					[this.selectedIndex - 1]: { isRead: { $set: true }, isReading: { $set: false }, isSelected: { $set: false } },
 					[this.selectedIndex]: { isSelected: { $set: true } }
 				}, { isPlaying: false });
 			}
 		}
+
+		this.speakNextSegment();
 	}
 
 	onTtsCancel() {
@@ -464,6 +497,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	render() {
 		const state = this.state;
 		const props = this.props;
+		var voiceStyle = getValue(this, [ "lines", this.selectedIndex, "voiceSegments", this.currentSpeechId, "style" ], settings.voiceStyle);
 		
 		return <Container>
 			<Header>
@@ -487,16 +521,19 @@ export default class Reader extends Component /*:: <Props, State> */ {
 					<Button active><Text>{state.loading}</Text></Button>
 				</FooterTab> : <FooterTab>
 					<Button onPress={() => this.listRef.current.scrollToIndex(this.selectedIndex)}>
-						<Text>{(this.selectedIndex / this.lines.length * 100).toFixed(1).toString()}%</Text>
+						<Text>{(this.selectedIndex / this.lines.length * 100).toFixed(1)}%</Text>
 						{this.lastScheduledIndex ? <Text>
-							Loc {this.selectedIndex.toString()}/{this.lastScheduledIndex.toString()} ({this.lines.length.toString()})
+							Loc {this.selectedIndex}/{this.lastScheduledIndex} ({this.lines.length})
 						</Text> : <Text>
-							Loc {this.selectedIndex.toString()}/{this.lines.length.toString()}
+							Loc {this.selectedIndex}/{this.lines.length}
 						</Text>}
-						{!!this.currentSpeechId && <Text>Cue {this.currentSpeechId.toString()}/{this.lines[this.selectedIndex].lastSpeechId.toString()}</Text>}
 					</Button>
 					<Button active onPress={this.onPlayButtonPress.bind(this)}><Icon type="MaterialIcons" name={state.isPlaying ? "pause" : "play-arrow"} /></Button>
-					<Button><Icon type="MaterialIcons" name="settings-voice" /></Button>
+					<Button>
+						<Text numberOfLines={1}>{voiceStyle.voiceId}</Text>
+						<Text numberOfLines={1}>P{voiceStyle.pitch.toFixed(1)} R{voiceStyle.rate.toFixed(1)}</Text>
+						{/* <Text numberOfLines={1}></Text> */}
+					</Button>
 				</FooterTab>}
 			</Footer>
 		</Container>
