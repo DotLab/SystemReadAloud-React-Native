@@ -77,9 +77,11 @@ const settings = {
 		color: "#F7F7EF",
 		fontSize: 18,
 		fontWeight: "normal",
-		fontFamily: "Roboto",
+		// fontFamily: "Roboto",
+		fontFamily: "PingFang SC",
 		fontStyle: "normal",
 		// lineHeight: 27,
+		backgroundColor: "#00000000",
 	},
 	textPaints: [
 		{ regexp: "第.+[卷章].+", style: { fontWeight: "bold", color: "#65D9EF" } },
@@ -110,19 +112,29 @@ const settings = {
 	// reading
 	scheduleLength: 100,
 	voiceStyle: {
-		voiceId: "cmn-cn-x-ssa-local",
+		// voiceId: "cmn-cn-x-ssa-local",
+		// pitch: .9,
+		// rate: .8
+		voiceId: "com.apple.ttsbundle.Ting-Ting-premium",
 		pitch: .9,
-		rate: .8
+		rate: .7
 	},
 	voicePaints: [
-		{ regexp: "第.+[卷章].+", style: { pitch: .8, rate: 1 } },
-		{ regexp: "“.+?”", style: { pitch: 1.4, rate: .9 } },
-		{ regexp: "「.+?」", style: { pitch: 1.4, rate: .9 } },
-		{ regexp: "‘.+?’", style: { pitch: 1.2, rate: .8 } },
-		{ regexp: "『.+?』", style: { pitch: 1.2, rate: .8 } },
-		{ regexp: "（.+?）", style: { pitch: .6, rate: .8 } },
-		{ regexp: "\\(.+?\\)", style: { pitch: .6, rate: .8 } },
-		{ regexp: "[a-zA-Z][a-zA-Z0-9 ]*", style: { voiceId: "en-us-x-sfg#female_1-local" } },
+		// { regexp: "第.+[卷章].+", style: { pitch: .8, rate: 1 } },
+		// { regexp: "“.+?”", style: { pitch: 1.4, rate: .9 } },
+		// { regexp: "「.+?」", style: { pitch: 1.4, rate: .9 } },
+		// { regexp: "‘.+?’", style: { pitch: 1.2, rate: .8 } },
+		// { regexp: "『.+?』", style: { pitch: 1.2, rate: .8 } },
+		// { regexp: "（.+?）", style: { pitch: .6, rate: .8 } },
+		// { regexp: "\\(.+?\\)", style: { pitch: .6, rate: .8 } },
+		// { regexp: "[a-zA-Z][a-zA-Z0-9 ]*", style: { voiceId: "en-us-x-sfg#female_1-local" } },
+		// { regexp: "第.+[卷章].+", style: { pitch: .8, rate: 1 } },
+		{ regexp: "“.+?”", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium" } },
+		{ regexp: "「.+?」", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium" } },
+		{ regexp: "‘.+?’", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium", pitch: .7, rate: .5 } },
+		{ regexp: "『.+?』", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium", pitch: .7, rate: .5 } },
+		// { regexp: "（.+?）", style: { pitch: .6, rate: .8 } },
+		// { regexp: "\\(.+?\\)", style: { pitch: .6, rate: .8 } },
 	],
 	voiceEdits: [
 		{ regexp: "[“”‘’（）\\(\\)「」『』]", replace: "" },
@@ -180,10 +192,13 @@ function paint/*:: <T> */(text/*: string */, style/*: T */, paints/*: Array<Pain
 }
 
 function voiceStyleToParam(voiceStyle/*: VoiceStyle */) {
-	return {
-		iosVoiceId: voiceStyle.voiceId,
-		androidParams: { KEY_PARAM_UTTERANCE_ID: voiceStyle.voiceId },
-	};
+	if (voiceStyle.voiceId) {
+		return {
+			iosVoiceId: voiceStyle.voiceId,
+			androidParams: { KEY_PARAM_UTTERANCE_ID: voiceStyle.voiceId },
+		};
+	}
+	return undefined;
 }
 
 function setTtsVoiceStyle(voiceStyle/*: VoiceStyle */) {
@@ -343,11 +358,19 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 		try {
 			await Tts.getInitStatus();
+			Tts.voices().then(v => console.log(v));
+			// Tts.voices().then(v => console.log(v.filter(x => !x.notInstalled && !x.networkConnectionRequired)));
+			// Tts.setDefaultLanguage("en-US");
+			// Tts.setDefaultVoice("com.apple.ttsbundle.Samantha-compact");
+			// Tts.setDefaultPitch(1);
+			// Tts.setDefaultRate(.6);
+			// Tts.speak("Hello! How do you do?");
+			// Tts.speak("Hello!", { iosVoiceId: "com.apple.ttsbundle.Samantha-compact" });
 		} catch(err) {
 			if (err.code === 'no_engine') {
 				Tts.requestInstallEngine();
-				return;
 			}
+			throw err;
 		}
 		Tts.addEventListener("tts-start", this.onTtsStart.bind(this));
 		Tts.addEventListener("tts-finish", this.onTtsFinish.bind(this));
@@ -355,8 +378,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		this.setState({ loading: undefined, isPlaying: false });
 		
 		// test
-		// Tts.voices().then(v => console.log(v.filter(x => !x.notInstalled && !x.networkConnectionRequired)));
-		this.onPlayButtonPress();
+		// this.onPlayButtonPress();
 	}
 
 	onLinePress(line/*: Line */) {
@@ -385,7 +407,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			<Native.Text style={{
 				paddingHorizontal: settings.linePaddingX,
 				paddingVertical: settings.linePaddingY,
-				backgroundColor: backgroundColor,
+				backgroundColor,
 			}}>{line.textSegments.map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)}</Native.Text>
 		</TouchableOpacity>;
 	}
@@ -454,6 +476,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 	onTtsFinish() {
 		console.log("onTtsFinish");
+		if (!this.state.isPlaying) return;
 
 		this.currentSpeechId += 1;
 		console.log(this.currentSpeechId, this.lines[this.selectedIndex].lastSpeechId);
@@ -494,6 +517,19 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		}, { isPlaying: false });
 	}
 	
+	onLocButtonPress() {
+		const scroll = this.listRef.current;
+		if (!this.willListAutoScroll()) {
+			const visibleIndex = scroll.findApproxFirstVisibleIndex();
+			if (visibleIndex > this.selectedIndex) {
+				scroll.scrollToIndex(this.selectedIndex + 1); 
+			} else {
+				scroll.scrollToIndex(this.selectedIndex - 1); 
+			}
+		}
+		scroll.scrollToIndex(this.selectedIndex, true); 
+	}
+
 	render() {
 		const state = this.state;
 		const props = this.props;
@@ -520,18 +556,18 @@ export default class Reader extends Component /*:: <Props, State> */ {
 				{state.loading ? <FooterTab>
 					<Button active><Text>{state.loading}</Text></Button>
 				</FooterTab> : <FooterTab>
-					<Button onPress={() => this.listRef.current.scrollToIndex(this.selectedIndex)}>
+					<Button onPress={this.onLocButtonPress.bind(this)}>
 						<Text>{(this.selectedIndex / this.lines.length * 100).toFixed(1)}%</Text>
-						{this.lastScheduledIndex ? <Text>
-							Loc {this.selectedIndex}/{this.lastScheduledIndex} ({this.lines.length})
-						</Text> : <Text>
-							Loc {this.selectedIndex}/{this.lines.length}
+						{this.lastScheduledIndex ? <Text numberOfLines={1}>
+							{this.selectedIndex}/{this.lastScheduledIndex} ({this.lines.length})
+						</Text> : <Text numberOfLines={1}>
+							{this.selectedIndex}/{this.lines.length}
 						</Text>}
 					</Button>
 					<Button active onPress={this.onPlayButtonPress.bind(this)}><Icon type="MaterialIcons" name={state.isPlaying ? "pause" : "play-arrow"} /></Button>
 					<Button>
 						<Text numberOfLines={1}>{voiceStyle.voiceId}</Text>
-						<Text numberOfLines={1}>P{voiceStyle.pitch.toFixed(1)} R{voiceStyle.rate.toFixed(1)}</Text>
+						{voiceStyle.pitch && voiceStyle.rate && <Text numberOfLines={1}>P{voiceStyle.pitch.toFixed(1)} R{voiceStyle.rate.toFixed(1)}</Text>}
 						{/* <Text numberOfLines={1}></Text> */}
 					</Button>
 				</FooterTab>}
