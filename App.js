@@ -16,6 +16,7 @@ import { parseZhNumber, fixNumberWidth } from "./zhNumber";
 
 import Reader from "./Reader";
 import EncodingPicker from "./EncodingPicker";
+import Downloader from "./Downloader";
 
 import encodings from './encodings';
 
@@ -26,6 +27,7 @@ const BOOK_LIST_OFFSET = "BOOK_LIST_OFFSET";
 
 const ENCODING_PICKER = "ENCODING_PICKER";
 const READER = "READER";
+const DOWNLOADER = "DOWNLOADER";
 
 const BookListItemActionSheetConfig = {
 	options: [ "Config", "Encoding", "Delete", "Cancel" ],
@@ -40,6 +42,29 @@ function bookComparer(a /*: Book */, b /*: Book */) {
 
 function bookKeyExtractor(x /*: Book */) {
 	return x.hash;
+}
+
+async function importBook(title, uri, basePath) {
+	console.log("importing", title, uri);
+	
+	const text = await Fs.readFile(uri, "base64");
+	const raw = base64ToRaw(text);
+	const hash /*: string */ = md5(raw);
+	await Fs.writeFile(basePath + hash, text, "base64");
+	
+	await Store.update(LIBRARY, { [hash]: {
+		title,
+		originalTitle: title,
+		sortTitle: title.replace(/([零一二三四五六七八九十]+)/, seg => fixNumberWidth(parseZhNumber(seg))),
+		encoding: encodings[0],
+		hash,
+		size: raw.length,
+		dateImported: new Date(),
+		excerptRaw: raw.substr(0, 128),
+		viewingLine: "",
+		viewingIndex: 0,
+		lineCount: 0,
+	} });
 }
 
 /*:: type Props = {
@@ -91,33 +116,13 @@ class App extends Component /*:: <Props, State> */ {
 		await Store.update(LIBRARY, {});
 
 		// handle linking
-		const url /*: ?string */ = await Linking.getInitialURL();
-		if (url) {
-			const urlDecoded = decodeURIComponent(url);
-			const title = urlDecoded.substring(urlDecoded.lastIndexOf("/") + 1, urlDecoded.lastIndexOf("."));
-			console.log(url, urlDecoded, title);
+		const uri /*: ?string */ = await Linking.getInitialURL();
+		if (uri) {
+			const uriDecoded = decodeURIComponent(uri);
+			const title = uriDecoded.substring(uriDecoded.lastIndexOf("/") + 1, uriDecoded.lastIndexOf("."));
 			this.setState({ importedBookTitle: title });
-
-			const text = await Fs.readFile(url, "base64");
-			const raw = base64ToRaw(text);
-			const hash /*: string */ = md5(raw);
-			await Fs.writeFile(this.basePath + hash, text, "base64");
-
-			await Store.update(LIBRARY, { [hash]: {
-				title,
-				originalTitle: title,
-				sortTitle: title.replace(/([零一二三四五六七八九十]+)/, seg => fixNumberWidth(parseZhNumber(seg))),
-				encoding: encodings[0],
-				hash,
-				size: raw.length,
-				dateImported: new Date(),
-				excerptRaw: raw.substr(0, 128),
-				viewingLine: "",
-				viewingIndex: 0,
-				lineCount: 0,
-			} });
+			await importBook(title, uri, this.basePath);
 		}
-		
 		this.reloadLibrary();
 	}
 
@@ -126,7 +131,7 @@ class App extends Component /*:: <Props, State> */ {
 
 		const library /*: Library */ = await Store.get(LIBRARY);
 		const books /*: Array<any> */ = Object.values(library).filter(x => x);
-		console.log(books);
+		// console.log(books);
 		books.sort(bookComparer);
 
 		this.setState({ books });
@@ -134,7 +139,8 @@ class App extends Component /*:: <Props, State> */ {
 		this.listRef.current.scrollToOffset({ offset, animated: false });
 
 		// test
-		this.onBookListItemPress(books[0]);
+		// this.onBookListItemPress(books[0]);
+		// this.onAddButtonPress();
 	}
 
 	pickBookEncoding(book /*: Book */) {
@@ -215,12 +221,27 @@ class App extends Component /*:: <Props, State> */ {
 		</ListItem>;
 	}
 
+	onAddButtonPress() {
+		this.setState({
+			page: DOWNLOADER,
+			pageProps: {
+				basePath: this.basePath,
+				onClose: async (title, path) => {
+					this.setState({ page: undefined, importedBookTitle: title });
+					await importBook(title, path, this.basePath);
+					this.reloadLibrary();
+				}
+			}
+		});
+	}
+
 	render() {
 		const state = this.state;
 
 		switch (state.page) {
 		case ENCODING_PICKER: return <EncodingPicker {...state.pageProps} />; 
 		case READER: return <Reader {...state.pageProps} />; 
+		case DOWNLOADER: return <Downloader {...state.pageProps} />;
 		}
 
 		return <Container>
@@ -230,7 +251,7 @@ class App extends Component /*:: <Props, State> */ {
 				</Left>
 				<Body><Title>Library</Title></Body>
 				<Right>
-					<Button transparent><Icon name="menu" /></Button>
+					<Button transparent onPress={this.onAddButtonPress.bind(this)}><Icon name="download" /></Button>
 				</Right>
 			</Header>
 			
