@@ -63,6 +63,7 @@ async function importBook(title, uri, basePath) {
 		excerptRaw: raw.substr(0, 128),
 		viewingLine: "",
 		viewingIndex: 0,
+		selectedIndex: 0,
 		lineCount: 0,
 	} });
 }
@@ -182,10 +183,10 @@ class App extends Component /*:: <Props, State> */ {
 			pageProps: {
 				book,
 				basePath: this.basePath,
-				onClose: async (viewingLine, viewingIndex, lineCount) => {
+				onClose: async (viewingLine, viewingIndex, selectedIndex, lineCount) => {
 					this.setState({ page: undefined });
 					await Store.update(LIBRARY, { [book.hash]: {
-						viewingLine, viewingIndex, lineCount,
+						viewingLine, viewingIndex, selectedIndex, lineCount,
 					} });
 					this.reloadLibrary();
 				}
@@ -201,8 +202,8 @@ class App extends Component /*:: <Props, State> */ {
 			onPress={() => this.onBookListItemPress(book)}
 		>
 			<Body>
-				{!!book.viewingIndex && <Text note numberOfLines={1}>
-					{(book.viewingIndex / book.lineCount * 100).toFixed(1).toString()}%
+				{!!book.selectedIndex && <Text note numberOfLines={1}>
+					{(book.selectedIndex / book.lineCount * 100).toFixed(1).toString()}%
 					{!!book.viewingLine && " • " + book.viewingLine}
 				</Text>}
 				<Text>{book.title}</Text>

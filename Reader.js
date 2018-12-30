@@ -1,7 +1,7 @@
 // @flow
 
 import React, { Component } from "react";
-import Native, { View, FlatList, Dimensions, ScrollView, TouchableOpacity } from "react-native";
+import Native, { View, FlatList, Dimensions, ScrollView, TouchableOpacity, Platform } from "react-native";
 import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Text, List, ListItem, Footer, FooterTab, Spinner } from "native-base";
 import { RecyclerListView, DataProvider, LayoutProvider } from "recyclerlistview";
 
@@ -85,17 +85,17 @@ const settings = {
 	},
 	textPaints: [
 		{ regexp: "第.+[卷章].+", style: { fontWeight: "bold", color: "#65D9EF" } },
-		{ regexp: "“.+?”", style: { color: "#E6DB73" } },
-		{ regexp: "「.+?」", style: { color: "#E6DB73" } },
+		{ regexp: "“+.+?”+", style: { color: "#E6DB73" } },
+		{ regexp: "「+.+?」+", style: { color: "#E6DB73" } },
 		{ regexp: "[a-zA-Z ]+", style: { color: "#B4E1D2" } },
 		{ regexp: "[0-9]+", style: { color: "#AE81FF" } },
 		{ regexp: "[零〇一二两三四五六七八九十百千万亿兆]+", style: { color: "#AE81FF" } },
-		{ regexp: "《.+?》", style: { color: "#F92671" } },
-		{ regexp: "【.+?】", style: { color: "#F92671" } },
-		{ regexp: "『.+?』", style: { color: "#F92671" } },
+		{ regexp: "《+.+?》+", style: { color: "#F92671" } },
+		{ regexp: "【+.+?】+", style: { color: "#F92671" } },
+		{ regexp: "『+.+?』+", style: { color: "#F92671" } },
 		{ regexp: "[我你他她它]们?", style: { fontStyle: "italic" } },
-		{ regexp: "（.+?）", style: { color: "#74705E" } },
-		{ regexp: "\\(.+?\\)", style: { color: "#74705E" } },
+		{ regexp: "（+.+?）+", style: { color: "#74705E" } },
+		{ regexp: "\\(+.+?\\)+", style: { color: "#74705E" } },
 	],
 	
 	linePaddingX: 0,
@@ -121,20 +121,20 @@ const settings = {
 	},
 	voicePaints: [
 		// { regexp: "第.+[卷章].+", style: { pitch: .8, rate: 1 } },
-		// { regexp: "“.+?”", style: { pitch: 1.4, rate: .9 } },
-		// { regexp: "「.+?」", style: { pitch: 1.4, rate: .9 } },
-		// { regexp: "‘.+?’", style: { pitch: 1.2, rate: .8 } },
-		// { regexp: "『.+?』", style: { pitch: 1.2, rate: .8 } },
-		// { regexp: "（.+?）", style: { pitch: .6, rate: .8 } },
-		// { regexp: "\\(.+?\\)", style: { pitch: .6, rate: .8 } },
+		// { regexp: "“+.+?”+", style: { pitch: 1.4, rate: .9 } },
+		// { regexp: "「+.+?」+", style: { pitch: 1.4, rate: .9 } },
+		// { regexp: "‘+.+?’+", style: { pitch: 1.2, rate: .8 } },
+		// { regexp: "『+.+?』+", style: { pitch: 1.2, rate: .8 } },
+		// { regexp: "（+.+?）+", style: { pitch: .6, rate: .8 } },
+		// { regexp: "\\(+.+?\\)+", style: { pitch: .6, rate: .8 } },
 		// { regexp: "[a-zA-Z][a-zA-Z0-9 ]*", style: { voiceId: "en-us-x-sfg#female_1-local" } },
 		// { regexp: "第.+[卷章].+", style: { pitch: .8, rate: 1 } },
-		{ regexp: "“.+?”", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium" } },
-		{ regexp: "「.+?」", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium" } },
-		{ regexp: "‘.+?’", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium", pitch: .7, rate: .5 } },
-		{ regexp: "『.+?』", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium", pitch: .7, rate: .5 } },
-		// { regexp: "（.+?）", style: { pitch: .6, rate: .8 } },
-		// { regexp: "\\(.+?\\)", style: { pitch: .6, rate: .8 } },
+		{ regexp: "“+.+?”+", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium" } },
+		{ regexp: "「+.+?」+", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium" } },
+		{ regexp: "‘+.+?’+", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium", pitch: .7, rate: .5 } },
+		{ regexp: "『+.+?』+", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium", pitch: .7, rate: .5 } },
+		{ regexp: "（+.+?）+", style: { pitch: .6, rate: .6 } },
+		{ regexp: "\\(+.+?\\)+", style: { pitch: .6, rate: .6 } },
 	],
 	voiceEdits: [
 		{ regexp: "[“”‘’（）\\(\\)「」『』]", replace: "" },
@@ -289,7 +289,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		});
 		this.state = { loading: "Initializing...", dataProvider: this.lineDataProvider.cloneWithRows([]) };
 
-		this.selectedIndex = props.book.viewingIndex || 0;
+		this.selectedIndex = props.book.selectedIndex || 0;
 	}
 
 	componentDidMount() {
@@ -334,7 +334,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		
 		const lines = edited.map((text, index) => ({
 			text, index,
-			isSelected: index === this.props.book.viewingIndex, isReading: false, isRead: false,
+			isSelected: index === this.selectedIndex, isReading: false, isRead: false,
 			lastSpeechId: 0
 		}));
 		this.lines = lines;
@@ -420,15 +420,19 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 		const viewingIndex = this.listRef.current.findApproxFirstVisibleIndex();
 		const viewingLine = this.lines[viewingIndex].text.trim();
-		this.props.onClose(viewingLine, viewingIndex, this.lines.length);
+		this.props.onClose(viewingLine, viewingIndex, this.selectedIndex, this.lines.length - 1);
 	}
 
 	speakNextSegment() {
 		if (this.lines[this.selectedIndex].voiceSegments) {
 			const segment = this.lines[this.selectedIndex].voiceSegments[this.currentSpeechId];
-			console.log(segment);
+			console.log(this.lines[this.selectedIndex].voiceSegments, segment);
 			setTtsVoiceStyle(segment.style);
-			Tts.speak("　　“    " + segment.text + "                     ", voiceStyleToParam(segment.style));
+			if (Platform.OS === "android") {
+				Tts.speak("　　“    " + segment.text + "                     ", voiceStyleToParam(segment.style));
+			} else {
+				Tts.speak(segment.text, voiceStyleToParam(segment.style));
+			}
 		}
 	}
 
@@ -476,32 +480,44 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 	onTtsFinish() {
 		console.log("onTtsFinish");
-		if (!this.state.isPlaying) return;
+		if (!this.state.isPlaying) {
+			this.onTtsCancel();
+			return;
+		}
 
 		this.currentSpeechId += 1;
-		console.log(this.currentSpeechId, this.lines[this.selectedIndex].lastSpeechId);
 
 		if (this.currentSpeechId > this.lines[this.selectedIndex].lastSpeechId) {
 			this.currentSpeechId = 0;
-			this.selectedIndex += 1;
 
-			const voiceSegments = buildVoiceSegments(this.lines[this.selectedIndex].text, settings.voiceStyle, settings.voicePaints, settings.voiceEdits);
-			this.lines = update(this.lines, { 
-				[this.selectedIndex - 1]: { isRead: { $set: true }, isReading: { $set: false }, isSelected: { $set: false } },
-				[this.selectedIndex]: { $merge: { voiceSegments, lastSpeechId: voiceSegments.length - 1 } } 
-			});
-
-			if (this.selectedIndex <= this.lastScheduledIndex) {
-				this.updateLinesAndSetState({ 
-					[this.selectedIndex]: { isReading: { $set: true }, isSelected: { $set: true } }
-				});
-			} else {  // last one
-				this.lastScheduledIndex = 0;
-				this.currentSpeechId = 0;
+			if (this.selectedIndex === this.lines.length - 1) {  // last line
 				this.updateLinesAndSetState({
-					[this.selectedIndex]: { isSelected: { $set: true } }
+					[this.selectedIndex]: { isRead: { $set: true }, isReading: { $set: false } }
 				}, { isPlaying: false });
+				return;
 			}
+
+			var voiceSegments;
+			do {
+				voiceSegments = buildVoiceSegments(this.lines[this.selectedIndex + 1].text, settings.voiceStyle, settings.voicePaints, settings.voiceEdits);
+				this.lines = update(this.lines, { 
+					[this.selectedIndex]: { isRead: { $set: true }, isReading: { $set: false }, isSelected: { $set: false } },
+					[this.selectedIndex + 1]: { $merge: { voiceSegments, lastSpeechId: voiceSegments.length - 1 } } 
+				});
+				
+				if (this.selectedIndex < this.lastScheduledIndex) {
+					this.updateLinesAndSetState({ 
+						[this.selectedIndex + 1]: { isReading: { $set: true }, isSelected: { $set: true } }
+					});
+				} else {  // last scheduled
+					this.lastScheduledIndex = 0;
+					this.currentSpeechId = 0;
+					this.updateLinesAndSetState({
+						[this.selectedIndex + 1]: { isSelected: { $set: true } }
+					}, { isPlaying: false });
+				}
+				this.selectedIndex += 1;
+			} while (voiceSegments.length === 0 && this.selectedIndex <= this.lastScheduledIndex);
 		}
 
 		this.speakNextSegment();
@@ -549,7 +565,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 					layoutProvider={this.lineLayoutProvider}
 					dataProvider={state.dataProvider}
 					rowRenderer={this.renderLine.bind(this)}
-					initialRenderIndex={props.book.viewingIndex}
+					initialRenderIndex={props.book.viewingIndex || 0}
 				/>}
 			</View>
 			<Footer>
@@ -557,17 +573,17 @@ export default class Reader extends Component /*:: <Props, State> */ {
 					<Button active><Text>{state.loading}</Text></Button>
 				</FooterTab> : <FooterTab>
 					<Button onPress={this.onLocButtonPress.bind(this)}>
-						<Text>{(this.selectedIndex / this.lines.length * 100).toFixed(1)}%</Text>
+						<Text>{(this.selectedIndex / (this.lines.length - 1) * 100).toFixed(1)}%</Text>
 						{this.lastScheduledIndex ? <Text numberOfLines={1}>
-							{this.selectedIndex}/{this.lastScheduledIndex} ({this.lines.length})
+							{this.selectedIndex}/{this.lastScheduledIndex} ({this.lines.length - 1})
 						</Text> : <Text numberOfLines={1}>
-							{this.selectedIndex}/{this.lines.length}
+							{this.selectedIndex}/{this.lines.length - 1}
 						</Text>}
 					</Button>
 					<Button active onPress={this.onPlayButtonPress.bind(this)}><Icon type="MaterialIcons" name={state.isPlaying ? "pause" : "play-arrow"} /></Button>
 					<Button>
 						<Text numberOfLines={1}>{voiceStyle.voiceId}</Text>
-						{voiceStyle.pitch && voiceStyle.rate && <Text numberOfLines={1}>P{voiceStyle.pitch.toFixed(1)} R{voiceStyle.rate.toFixed(1)}</Text>}
+						{voiceStyle.pitch && voiceStyle.rate && <Text numberOfLines={1}>P{voiceStyle.pitch.toFixed(1)}/R{voiceStyle.rate.toFixed(1)}</Text>}
 						{/* <Text numberOfLines={1}></Text> */}
 					</Button>
 				</FooterTab>}
