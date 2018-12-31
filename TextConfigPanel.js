@@ -4,6 +4,7 @@ import React, { Component } from "react";
 import Native, { View, FlatList, Dimensions, ScrollView, TouchableOpacity, Platform } from "react-native";
 import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Text, List, ListItem, Footer, FooterTab, Spinner, CheckBox, Item, Input } from "native-base";
 import { RecyclerListView, DataProvider, LayoutProvider } from "recyclerlistview";
+import { SlidersColorPicker } from "react-native-color";
 
 import Tts from "react-native-tts";
 import Fs from "react-native-fs";
@@ -129,6 +130,17 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					<ListItem itemDivider><Text>Painting text</Text></ListItem>
 					<ListItem itemDivider><Text>Rendering lines</Text></ListItem>
 					<ListItem itemDivider><Text>Painting lines</Text></ListItem>
+					{/* <SlidersColorPicker
+						visible={true}
+						color={"#ff0000"}
+						returnMode={'hex'}
+						okLabel="Done"
+						cancelLabel="Cancel"
+						onOk={hex => {}}
+						onCancel={() => {}}
+						swatches={[ "#111111" ]}
+						swatchesLabel="RECENTS"
+					/> */}
                 </ScrollView>
 			</View>
 		</Container>
