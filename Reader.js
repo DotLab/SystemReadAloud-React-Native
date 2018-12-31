@@ -366,7 +366,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 		try {
 			await Tts.getInitStatus();
-			Tts.voices().then(v => console.log(v));
+			// Tts.voices().then(v => console.log(v));
 			// Tts.voices().then(v => console.log(v.filter(x => !x.notInstalled && !x.networkConnectionRequired)));
 			// Tts.setDefaultLanguage("en-US");
 			// Tts.setDefaultVoice("com.apple.ttsbundle.Samantha-compact");

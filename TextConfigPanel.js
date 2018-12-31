@@ -44,9 +44,19 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		</ListItem>;
 	}
 
+	renderTextField(key, text) {
+		const value = this.state[key];
+		return <ListItem noIndent style={a("pl-12")}>
+			<View style={a("fx-1")}>
+				<Item regular><Input style={a("fz-16 h-30 p-0")} value={value} onChangeText={text => this.setState({ [key]: text })}/></Item>
+			</View>
+			<Text style={a("fx-1 ta-c")}>{text}</Text>
+		</ListItem>;
+	}
+
 	renderTextEditConfigBlock(key) {
 		const value = this.state[key];
-		return value.map(({ regexp, replace }, i) => <ListItem noIndent key={i.toString()} style={{ paddingLeft: 12 }}>
+		return value.map(({ regexp, replace }, i) => <ListItem noIndent key={i.toString()} style={a("pl-12")}>
 			<View style={{ flex: 1 }}>
 				<Item regular>
 					<Input style={a("fz-16 h-30 p-0")} value={regexp} onChangeText={text => this.onTextEditBlockTextChange(key, i, "regexp", text)}/>
@@ -113,14 +123,9 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					<ListItem itemDivider><Text>Editing full text</Text></ListItem>
 					{this.renderTextEditConfigBlock("preEdits")}
 					<ListItem itemDivider><Text>Splitting lines</Text></ListItem>
-					<ListItem noIndent>
-
-					</ListItem>
+					{this.renderTextField("splitRegexp", "Line split RegExp")}
 					{this.renderCheckbox("removeEmptyLines", "Remove empty lines")}
                 </ScrollView>
-				{/* <ScrollView style={{ flex: 1, backgroundColor: settings.pageColor }}>
-					<Text>alksdjfl asd fal dsflks adlflk dsfa lk</Text>					
-				</ScrollView> */}
 			</View>
 		</Container>
 	}
