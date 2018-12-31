@@ -27,8 +27,7 @@ import { settings } from "./Reader";
 	onClose: (string, number, number, number) => any
 |} */
 
-/*:: type State = {|
-|} */
+/*:: type State = Object */
 
 export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 	constructor(props/*: Props */) {
@@ -37,7 +36,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		this.state = settings;
 	}
 
-	renderCheckbox(key, text) {
+	renderCheckbox(key/*: string */, text/*: string */) {
 		const value = this.state[key];
 		return <ListItem noIndent>
 			<CheckBox checked={value} onPress={() => this.setState({ [key]: !value })}/>
@@ -45,7 +44,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		</ListItem>;
 	}
 
-	renderTextField(key, text) {
+	renderTextField(key/*: string */, text/*: string */) {
 		const value = this.state[key];
 		return <ListItem noIndent style={a("pl-12")}>
 			<View style={a("fx-1")}>
@@ -55,7 +54,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		</ListItem>;
 	}
 
-	renderTextEditConfigBlock(key) {
+	renderTextEditConfigBlock(key/*: string */) {
 		const value = this.state[key];
 		return value.map(({ regexp, replace }, i) => <ListItem noIndent key={i.toString()} style={a("pl-12")}>
 			<View style={{ flex: 1 }}>
@@ -81,23 +80,23 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		this.setState(update(this.state, { [key]: { [i]: { [key2]: { $set: text } } } }));
 	}
 
-	onTextEditBlockDeleteButtonPress(key, i) {
+	onTextEditBlockDeleteButtonPress(key/*: string */, i/*: number */) {
 		this.setState(update(this.state, { [key]: { $splice: [ [ i, 1 ] ] } }));
 	}
 	
-	onTextEditBlockCopyButtonPress(key, i) {
+	onTextEditBlockCopyButtonPress(key/*: string */, i/*: number */) {
 		const { regexp, replace } = this.state[key][i];
 		this.setState(update(this.state, { [key]: { $splice: [ [ i, 0, { regexp, replace } ] ] } }));
 	}
 	
-	onTextEditBlockUpButtonPress(key, i) {
+	onTextEditBlockUpButtonPress(key/*: string */, i/*: number */) {
 		if (0 < i && i <= this.state[key].length - 1) {
 			const value = this.state[key][i];
 			this.setState(update(this.state, { [key]: { $splice: [ [ i, 1 ], [ i - 1, 0, value ] ] } }));
 		}
 	}
 
-	onTextEditBlockDownButtonPress(key, i) {
+	onTextEditBlockDownButtonPress(key/*: string */, i/*: number */) {
 		if (0 <= i && i < this.state[key].length - 1) {
 			const value = this.state[key][i];
 			this.setState(update(this.state, { [key]: { $splice: [ [ i, 1 ], [ i + 1, 0, value ] ] } }));
