@@ -52,7 +52,7 @@ import TextConfigPanel from "./TextConfigPanel";
 
 const TEXT_CONFIG_PANEL = "TEXT_CONFIG_PANEL";
 
-const settings = {
+export const settings = {
 	// preprocess
 	decodeHtml: true,
 	toFullWidth: false,
