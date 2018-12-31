@@ -1,3 +1,5 @@
+// @flow
+
 const NUMBER = "NUMBER";
 const ENUM = "ENUM";
 const COLOR = "COLOR";
@@ -100,13 +102,13 @@ const rules = {
 };
 
 const dict = {};
-function comparer(a, b) {
+function comparer(a/*: string */, b/*: string */) /*: number */ {
 	if (a < b) return -1;
 	if (a > b) return 1;
 	return 0;
 }
 
-export default function a(style) {
+export default function a(style/*: string */) /*: Object */ {
 	const segments = style.trim().split(/ +/).sort(comparer);
 	const key = segments.join(" ");
 	if (!dict[key]) {
@@ -115,7 +117,7 @@ export default function a(style) {
 	return dict[key];
 }
 
-export function buildJss(segments) {
+export function buildJss(segments/*: Array<string> */) /*: Object */ {
 	const jss = {};
 	segments.forEach(s => {
 		const parts = s.split("-");
