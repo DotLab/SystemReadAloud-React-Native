@@ -104,8 +104,6 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 	}
 
 	render() {
-		const settings = this.state;
-
 		return <Container>
 			<Header>
 				<Left><Button transparent onPress={this.props.onClose}>
@@ -125,6 +123,12 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					<ListItem itemDivider><Text>Splitting lines</Text></ListItem>
 					{this.renderTextField("splitRegexp", "Line split RegExp")}
 					{this.renderCheckbox("removeEmptyLines", "Remove empty lines")}
+					<ListItem itemDivider><Text>Editing a line</Text></ListItem>
+					{this.renderTextEditConfigBlock("edits")}
+					<ListItem itemDivider><Text>Rendering text</Text></ListItem>
+					<ListItem itemDivider><Text>Painting text</Text></ListItem>
+					<ListItem itemDivider><Text>Rendering lines</Text></ListItem>
+					<ListItem itemDivider><Text>Painting lines</Text></ListItem>
                 </ScrollView>
 			</View>
 		</Container>
