@@ -137,7 +137,7 @@ export function buildJss(segments/*: Array<string> */) /*: Object */ {
 			return jss[rule.n] = option;
 		case COLOR:
 			const color = parts[1];
-			if (/#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?/.test(color)) throw new Error("Not a number: `" + parts[1] + "` in `" + s + "`");
+			if (!/#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?/.test(color)) throw new Error("Not a color: `" + parts[1] + "` in `" + s + "`");
 			return jss[rule.n] = color;
 		}
 	});
