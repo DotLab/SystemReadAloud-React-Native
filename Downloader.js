@@ -70,7 +70,7 @@ export default class Downloader extends Component /*:: <Props, State> */ {
 				<Body><Title>Downloader</Title></Body>
 				<Right />
 			</Header>
-			<View style={{ flex: 1 }}>
+			<View>
 				{status ? <Spinner /> : <Form>
 					<Textarea rowSpan={3} bordered placeholder="Title..." onChangeText={text => this.title = text} />
 					<Textarea rowSpan={5} bordered placeholder="URL..." keyboardType="url" onChangeText={text => this.url = text} />
