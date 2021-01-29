@@ -1,0 +1,25 @@
+{
+  "name": "RNMeasureText",
+  "version": "1.0.0",
+  "summary": "RNMeasureText",
+  "description": "RNMeasureText",
+  "homepage": "https://github.com/airamrguez/react-native-measure-text",
+  "license": "MIT",
+  "authors": {
+    "author": "author@domain.cn"
+  },
+  "platforms": {
+    "ios": "7.0"
+  },
+  "source": {
+    "git": "https://github.com/author/RNMeasureText.git",
+    "tag": "master"
+  },
+  "source_files": "RNMeasureText/**/*.{h,m}",
+  "requires_arc": true,
+  "dependencies": {
+    "React": [
+
+    ]
+  }
+}

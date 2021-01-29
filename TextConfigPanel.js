@@ -26,7 +26,7 @@ function isRegexpValid(regexp/*: string */) {
 	var isValid = true;
 	try {
 		new RegExp(regexp);
-	} catch(e) {
+	} catch (e) {
 		isValid = false;
 	}
 	return isValid;
@@ -57,7 +57,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 	renderCheckbox(key/*: string */, text/*: string */) {
 		const value = this.state.settings[key];
 		return <ListItem noIndent>
-			<CheckBox checked={value} onPress={() => this.updateSettingsAndSetState({ [key]: { $set: !value } })}/>
+			<CheckBox checked={value} onPress={() => this.updateSettingsAndSetState({ [key]: { $set: !value } })} />
 			<Body><Text>{text}</Text></Body>
 		</ListItem>;
 	}
@@ -68,7 +68,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		return <ListItem noIndent style={a("pl-12")}>
 			<View style={a("fx-1")}>
 				<Item regular success={isValid} error={!isValid}>
-					<Input style={a("fz-16 h-30 p-0")} value={value} onChangeText={text => this.updateSettingsAndSetState({ [key]: { $set: text } })}/>
+					<Input style={a("fz-16 h-30 p-0")} value={value} onChangeText={text => this.updateSettingsAndSetState({ [key]: { $set: text } })} />
 					{/* {!!isValid && <Icon name='checkmark-circle' />}
 					{!isValid && <Icon name='close-circle' />} */}
 				</Item>
@@ -94,11 +94,11 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		}}>
 			<View style={a("fx-1")}>
 				<Item regular>
-					<Input style={a("fz-16 h-30 p-0")} value={value} onChangeText={text => this.updateSettingsAndSetState({ [key]: { $set: text } })}/>
+					<Input style={a("fz-16 h-30 p-0")} value={value} onChangeText={text => this.updateSettingsAndSetState({ [key]: { $set: text } })} />
 				</Item>
 			</View>
 			<Text style={a("fx-1 ta-c")}>{text}</Text>
-			<Text style={{ width: 10, backgroundColor: value }}/>
+			<Text style={{ width: 10, backgroundColor: value }} />
 		</ListItem>;
 	}
 
@@ -107,7 +107,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		return <ListItem noIndent style={a("pl-12")}>
 			<View style={a("fx-1")}>
 				<Item regular>
-					<Input style={a("fz-16 h-30 p-0")} value={value.toString()} onChangeText={text => this.updateSettingsAndSetState({ [key]: { $set: parseFloat(text) } })} keyboardType="numeric"/>
+					<Input style={a("fz-16 h-30 p-0")} value={value.toString()} onChangeText={text => this.updateSettingsAndSetState({ [key]: { $set: parseFloat(text) } })} keyboardType="numeric" />
 				</Item>
 			</View>
 			<Text style={a("fx-1 ta-c")}>{text}</Text>
@@ -121,12 +121,12 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 			return <ListItem noIndent key={i.toString()} style={a("pl-12")}>
 				<View style={{ flex: 1 }}>
 					<Item regular success={isValid} error={!isValid}>
-						<Input style={a("fz-16 h-30 p-0")} value={regexp} onChangeText={text => this.onTextEditBlockTextChange(key, i, "regexp", text)}/>
+						<Input style={a("fz-16 h-30 p-0")} value={regexp} onChangeText={text => this.onTextEditBlockTextChange(key, i, "regexp", text)} />
 						{/* {!!isValid && <Icon name='checkmark-circle' />}
 						{!isValid && <Icon name='close-circle' />} */}
 					</Item>
 					<Item regular>
-						<Input style={a("fz-16 h-30 p-0")} value={replace} onChangeText={text => this.onTextEditBlockTextChange(key, i, "replace", text)}/>
+						<Input style={a("fz-16 h-30 p-0")} value={replace} onChangeText={text => this.onTextEditBlockTextChange(key, i, "replace", text)} />
 					</Item>
 				</View>
 				<View style={a("pl-5")}>
@@ -146,25 +146,25 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 	}
 
 	onTextEditBlockDeleteButtonPress(key/*: string */, i/*: number */) {
-		this.updateSettingsAndSetState({ [key]: { $splice: [ [ i, 1 ] ] } });
+		this.updateSettingsAndSetState({ [key]: { $splice: [[i, 1]] } });
 	}
-	
+
 	onTextEditBlockCopyButtonPress(key/*: string */, i/*: number */) {
 		const { regexp, replace } = this.state[key][i];
-		this.updateSettingsAndSetState({ [key]: { $splice: [ [ i, 0, { regexp, replace } ] ] } });
+		this.updateSettingsAndSetState({ [key]: { $splice: [[i, 0, { regexp, replace }]] } });
 	}
-	
+
 	onTextEditBlockUpButtonPress(key/*: string */, i/*: number */) {
 		if (0 < i && i <= this.state[key].length - 1) {
 			const value = this.state[key][i];
-			this.updateSettingsAndSetState({ [key]: { $splice: [ [ i, 1 ], [ i - 1, 0, value ] ] } });
+			this.updateSettingsAndSetState({ [key]: { $splice: [[i, 1], [i - 1, 0, value]] } });
 		}
 	}
 
 	onTextEditBlockDownButtonPress(key/*: string */, i/*: number */) {
 		if (0 <= i && i < this.state[key].length - 1) {
 			const value = this.state[key][i];
-			this.updateSettingsAndSetState({ [key]: { $splice: [ [ i, 1 ], [ i + 1, 0, value ] ] } });
+			this.updateSettingsAndSetState({ [key]: { $splice: [[i, 1], [i + 1, 0, value]] } });
 		}
 	}
 
@@ -180,7 +180,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 				</Button></Right>
 			</Header>
 			<View style={{ flex: 1 }}>
-                <ScrollView style={{ flex: 1 }}>
+				<ScrollView style={{ flex: 1 }}>
 					<ListItem itemDivider><Text>Preprocessing</Text></ListItem>
 					{this.renderCheckbox("decodeHtml", "Decode HTML entities")}
 					{this.renderCheckbox("toFullWidth", "Convert to full width characters")}
@@ -207,7 +207,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 						</View>
 					</ListItem>
 					<ListItem itemDivider><Text>Painting text</Text></ListItem>
-					{this.state.doShowColorPicker && <SlidersColorPicker 
+					{this.state.doShowColorPicker && <SlidersColorPicker
 						{...this.state.colorPickerProps}
 						visible={true}
 						returnMode={'hex'}
@@ -217,7 +217,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 						swatches={this.state.colorPickerSwatches}
 						swatchesLabel="RECENT COLORS"
 					/>}
-                </ScrollView>
+				</ScrollView>
 			</View>
 		</Container>
 	}

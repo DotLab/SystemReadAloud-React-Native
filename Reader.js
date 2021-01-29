@@ -76,7 +76,7 @@ export const settings = {
 		{ regexp: " *(“.+?”) *", replace: " $1 " },
 		{ regexp: " *(‘.+?’) *", replace: " $1 " },
 	],
-	
+
 	// rendering
 	textStyle: {
 		color: "#F7F7EF",
@@ -102,18 +102,18 @@ export const settings = {
 		{ regexp: "（+.+?）+", style: { color: "#74705E" } },
 		{ regexp: "\\(+.+?\\)+", style: { color: "#74705E" } },
 	],
-	
+
 	linePaddingX: 0,
 	linePaddingY: 15,
 	lineSpacing: 0,
-	
+
 	pageColor: "#000",
 	lineColor: "#00000022",
 	lineSelectedColor: "#ffffff44",
 	lineScheduledColor: "#00ccff44",
 	lineReadingColor: "#ffcccc44",
 	lineReadColor: "#ff008822",
-	
+
 	// reading
 	scheduleLength: 100,
 	voiceStyle: {
@@ -159,7 +159,7 @@ function edit(text/*: string */, edits/*: Array<Edit> */) /*: string */ {
 |} */
 
 function paint/*:: <T> */(text/*: string */, style/*: T */, paints/*: Array<Paint<T>> */) /*: Array<Segment<T>> */ {
-	var segments = [ { text, style } ];
+	var segments = [{ text, style }];
 	paints.forEach(p => {
 		const re = new RegExp(p.regexp, "g");
 
@@ -279,16 +279,16 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		super(props);
 
 		this.listRef = React.createRef();
-		
+
 		this.lineDataProvider = new DataProvider((line1, line2) => {
-			return line1.text !== line2.text 
+			return line1.text !== line2.text
 				|| line1.isSelected !== line2.isSelected
 				|| line1.isReading !== line2.isReading
 				|| line1.isRead !== line2.isRead
 				|| line1.textSegments !== line2.textSegments
 				|| line1.voiceSegments !== line2.voiceSegments;
-		}); 
-		
+		});
+
 		const { width } = Dimensions.get("window");
 		this.screenWidth = width;
 		this.lineLayoutProvider = new LayoutProvider(() => 0, (_, dim, index) => {
@@ -327,22 +327,24 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			if (settings.toHalfWidth) text = toHalfWidth(text);
 			resolve(edit(text, settings.preEdits));
 		});
-		
+
 		this.setState({ loading: "Splitting text..." });
 		const texts /*: Array<string> */ = await startAsync/*:: <Array<string>> */(resolve => {
 			var texts = text.split(new RegExp(settings.splitRegexp));
 			if (settings.removeEmptyLines) texts = texts.filter(x => x);
 			resolve(texts);
 		});
-		
+
 		this.setState({ loading: "Editing texts..." });
-		const lines = await startAsync/*:: <Array<string>> */(resolve => {
-			resolve(texts.map((text, index) => ({
-				text: edit(text, settings.edits), index,
-				isSelected: index === this.selectedIndex, isReading: false, isRead: false,
-				lastSpeechId: 0
-			})))
+		const edited = await startAsync/*:: <Array<string>> */(resolve => {
+			resolve(texts.map(text => edit(text, settings.edits)))
 		});
+
+		const lines = edited.map((text, index) => ({
+			text, index,
+			isSelected: index === this.selectedIndex, isReading: false, isRead: false,
+			lastSpeechId: 0
+		}));
 		this.lines = lines;
 
 		this.setState({ loading: "Measuring lines..." });
@@ -372,7 +374,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			// Tts.setDefaultRate(.6);
 			// Tts.speak("Hello! How do you do?");
 			// Tts.speak("Hello!", { iosVoiceId: "com.apple.ttsbundle.Samantha-compact" });
-		} catch(err) {
+		} catch (err) {
 			if (err.code === 'no_engine') {
 				Tts.requestInstallEngine();
 			}
@@ -382,7 +384,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		Tts.addEventListener("tts-finish", this.onTtsFinish.bind(this));
 		Tts.addEventListener("tts-cancel", this.onTtsCancel.bind(this));
 		this.setState({ loading: undefined, isPlaying: false });
-		
+
 		// test
 		// this.onPlayButtonPress();
 		// this.onTextConfigButtonPress();
@@ -399,7 +401,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			this.listRef.current.scrollToIndex(line.index, true);
 		}
 	}
-	
+
 	renderLine(_/*: number */, line/*: Line */) {
 		var backgroundColor = settings.lineColor;
 		if (line.isReading) backgroundColor = settings.lineReadingColor;
@@ -447,12 +449,12 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		if (!this.state.isPlaying) {
 			this.lastScheduledIndex = Math.min(this.lines.length - 1, this.selectedIndex + settings.scheduleLength);
 			// if (this.listRef.current) this.listRef.current.scrollToIndex(this.selectedIndex);
-			
+
 			const voiceSegments = buildVoiceSegments(this.lines[this.selectedIndex].text, settings.voiceStyle, settings.voicePaints, settings.voiceEdits);
-			this.updateLinesAndSetState({ 
-				[this.selectedIndex]: { $merge: { voiceSegments, lastSpeechId: voiceSegments.length - 1 } } 
+			this.updateLinesAndSetState({
+				[this.selectedIndex]: { $merge: { voiceSegments, lastSpeechId: voiceSegments.length - 1 } }
 			}, { isPlaying: true });
-			
+
 			this.currentSpeechId = 0;
 			this.speakNextSegment();
 		} else {
@@ -507,13 +509,13 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			var voiceSegments;
 			do {
 				voiceSegments = buildVoiceSegments(this.lines[this.selectedIndex + 1].text, settings.voiceStyle, settings.voicePaints, settings.voiceEdits);
-				this.lines = update(this.lines, { 
+				this.lines = update(this.lines, {
 					[this.selectedIndex]: { isRead: { $set: true }, isReading: { $set: false }, isSelected: { $set: false } },
-					[this.selectedIndex + 1]: { $merge: { voiceSegments, lastSpeechId: voiceSegments.length - 1 } } 
+					[this.selectedIndex + 1]: { $merge: { voiceSegments, lastSpeechId: voiceSegments.length - 1 } }
 				});
-				
+
 				if (this.selectedIndex < this.lastScheduledIndex) {
-					this.updateLinesAndSetState({ 
+					this.updateLinesAndSetState({
 						[this.selectedIndex + 1]: { isReading: { $set: true }, isSelected: { $set: true } }
 					});
 				} else {  // last scheduled
@@ -539,18 +541,18 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			[this.selectedIndex]: { isReading: { $set: false } },
 		}, { isPlaying: false });
 	}
-	
+
 	onLocButtonPress() {
 		const scroll = this.listRef.current;
 		if (!this.willListAutoScroll()) {
 			const visibleIndex = scroll.findApproxFirstVisibleIndex();
 			if (visibleIndex > this.selectedIndex) {
-				scroll.scrollToIndex(this.selectedIndex + 1); 
+				scroll.scrollToIndex(this.selectedIndex + 1);
 			} else {
-				scroll.scrollToIndex(this.selectedIndex - 1); 
+				scroll.scrollToIndex(this.selectedIndex - 1);
 			}
 		}
-		scroll.scrollToIndex(this.selectedIndex, true); 
+		scroll.scrollToIndex(this.selectedIndex, true);
 	}
 
 	onTextConfigButtonPress() {
@@ -559,8 +561,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			pageProps: {
 				onClose: () => {
 					this.setState({ page: undefined });
-				},
-				text: this.text
+				}
 			}
 		});
 	}
@@ -570,10 +571,10 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		const props = this.props;
 
 		switch (state.page) {
-		case TEXT_CONFIG_PANEL: return <TextConfigPanel {...state.pageProps} />;
+			case TEXT_CONFIG_PANEL: return <TextConfigPanel {...state.pageProps} />;
 		}
 
-		var voiceStyle = getValue(this, [ "lines", this.selectedIndex, "voiceSegments", this.currentSpeechId, "style" ], settings.voiceStyle);
+		var voiceStyle = getValue(this, ["lines", this.selectedIndex, "voiceSegments", this.currentSpeechId, "style"], settings.voiceStyle);
 		return <Container>
 			<Header>
 				<Left><Button transparent onPress={this.onBackButtonPress.bind(this)}>
@@ -595,21 +596,21 @@ export default class Reader extends Component /*:: <Props, State> */ {
 				{state.loading ? <FooterTab>
 					<Button active><Text>{state.loading}</Text></Button>
 				</FooterTab> : <FooterTab>
-					<Button onPress={this.onLocButtonPress.bind(this)}>
-						<Text>{(this.selectedIndex / (this.lines.length - 1) * 100).toFixed(1)}%</Text>
-						{this.lastScheduledIndex ? <Text numberOfLines={1}>
-							{this.selectedIndex}/{this.lastScheduledIndex} ({this.lines.length - 1})
+						<Button onPress={this.onLocButtonPress.bind(this)}>
+							<Text>{(this.selectedIndex / (this.lines.length - 1) * 100).toFixed(1)}%</Text>
+							{this.lastScheduledIndex ? <Text numberOfLines={1}>
+								{this.selectedIndex}/{this.lastScheduledIndex} ({this.lines.length - 1})
 						</Text> : <Text numberOfLines={1}>
-							{this.selectedIndex}/{this.lines.length - 1}
-						</Text>}
-					</Button>
-					<Button active onPress={this.onPlayButtonPress.bind(this)}><Icon name={state.isPlaying ? "pause" : "play"} /></Button>
-					<Button>
-						<Text numberOfLines={1}>{voiceStyle.voiceId}</Text>
-						{voiceStyle.pitch && voiceStyle.rate && <Text numberOfLines={1}>P{voiceStyle.pitch.toFixed(1)}/R{voiceStyle.rate.toFixed(1)}</Text>}
-						{/* <Text numberOfLines={1}></Text> */}
-					</Button>
-				</FooterTab>}
+									{this.selectedIndex}/{this.lines.length - 1}
+								</Text>}
+						</Button>
+						<Button active onPress={this.onPlayButtonPress.bind(this)}><Icon name={state.isPlaying ? "pause" : "play"} /></Button>
+						<Button>
+							<Text numberOfLines={1}>{voiceStyle.voiceId}</Text>
+							{voiceStyle.pitch && voiceStyle.rate && <Text numberOfLines={1}>P{voiceStyle.pitch.toFixed(1)}/R{voiceStyle.rate.toFixed(1)}</Text>}
+							{/* <Text numberOfLines={1}></Text> */}
+						</Button>
+					</FooterTab>}
 			</Footer>
 		</Container>
 	}

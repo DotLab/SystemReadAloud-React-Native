@@ -1,0 +1,6 @@
+module Pods_ReadAloud_ReadAloudTests {
+  umbrella header "Pods-ReadAloud-ReadAloudTests-umbrella.h"
+
+  export *
+  module * { export * }
+}

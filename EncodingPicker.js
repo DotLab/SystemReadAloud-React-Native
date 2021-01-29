@@ -1,7 +1,7 @@
 // @flow
 
 import React, { Component } from "react";
-import { View, FlatList, Linking, AsyncStorage, Alert } from "react-native";
+import { View, FlatList, Linking, Alert } from "react-native";
 import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Text, List, ListItem, Footer, FooterTab } from "native-base";
 
 import encodings from "./encodings";

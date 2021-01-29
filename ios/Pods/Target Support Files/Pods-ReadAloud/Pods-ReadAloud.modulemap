@@ -1,0 +1,6 @@
+module Pods_ReadAloud {
+  umbrella header "Pods-ReadAloud-umbrella.h"
+
+  export *
+  module * { export * }
+}

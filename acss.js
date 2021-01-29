@@ -1,5 +1,3 @@
-// @flow
-
 const NUMBER = "NUMBER";
 const ENUM = "ENUM";
 const COLOR = "COLOR";
@@ -102,13 +100,13 @@ const rules = {
 };
 
 const dict = {};
-function comparer(a/*: string */, b/*: string */) /*: number */ {
+function comparer(a, b) {
 	if (a < b) return -1;
 	if (a > b) return 1;
 	return 0;
 }
 
-export default function a(style/*: string */) /*: Object */ {
+export default function a(style) {
 	const segments = style.trim().split(/ +/).sort(comparer);
 	const key = segments.join(" ");
 	if (!dict[key]) {
@@ -117,7 +115,7 @@ export default function a(style/*: string */) /*: Object */ {
 	return dict[key];
 }
 
-export function buildJss(segments/*: Array<string> */) /*: Object */ {
+export function buildJss(segments) {
 	const jss = {};
 	segments.forEach(s => {
 		const parts = s.split("-");
@@ -137,7 +135,7 @@ export function buildJss(segments/*: Array<string> */) /*: Object */ {
 			return jss[rule.n] = option;
 		case COLOR:
 			const color = parts[1];
-			if (!/#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?/.test(color)) throw new Error("Not a color: `" + parts[1] + "` in `" + s + "`");
+			if (/#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?/.test(color)) throw new Error("Not a number: `" + parts[1] + "` in `" + s + "`");
 			return jss[rule.n] = color;
 		}
 	});
