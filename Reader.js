@@ -336,15 +336,13 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		});
 		
 		this.setState({ loading: "Editing texts..." });
-		const edited = await startAsync/*:: <Array<string>> */(resolve => {
-			resolve(texts.map(text => edit(text, settings.edits)))
+		const lines = await startAsync/*:: <Array<string>> */(resolve => {
+			resolve(texts.map((text, index) => ({
+				text: edit(text, settings.edits), index,
+				isSelected: index === this.selectedIndex, isReading: false, isRead: false,
+				lastSpeechId: 0
+			})))
 		});
-		
-		const lines = edited.map((text, index) => ({
-			text, index,
-			isSelected: index === this.selectedIndex, isReading: false, isRead: false,
-			lastSpeechId: 0
-		}));
 		this.lines = lines;
 
 		this.setState({ loading: "Measuring lines..." });
@@ -561,7 +559,8 @@ export default class Reader extends Component /*:: <Props, State> */ {
 			pageProps: {
 				onClose: () => {
 					this.setState({ page: undefined });
-				}
+				},
+				text: this.text
 			}
 		});
 	}
