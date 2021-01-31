@@ -6,6 +6,8 @@ import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Tex
 import { RecyclerListView, DataProvider, LayoutProvider } from "recyclerlistview";
 import { SlidersColorPicker } from "react-native-color";
 import DropDownPicker from 'react-native-dropdown-picker';
+import { fonts } from './fonts'
+import { Collapse, CollapseHeader, CollapseBody } from "accordion-collapse-react-native";
 
 import Tts from "react-native-tts";
 import Fs from "react-native-fs";
@@ -98,6 +100,8 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 				}
 			});
 		}}>
+			<Text style={a("fx-1 px-10 fw-600")}>{text}</Text>
+			<Text style={{ marginHorizontal: 10, width: 10, backgroundColor: value }} />
 			<View style={a("fx-1")}>
 				<Item regular>
 					<Input style={a("fz-16 h-30 p-0")} value={value}
@@ -105,31 +109,31 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 							: this.updateSettingsAndSetState({ [key]: { $set: text } })} />
 				</Item>
 			</View>
-			<Text style={a("fx-1 ta-c")}>{text}</Text>
-			<Text style={{ width: 10, backgroundColor: value }} />
 		</ListItem>;
 	}
 
 	renderNumberTextField(key/*: string */, text/*: string */, key2) {
 		const value = key2 ? this.props.settings[key2][key] : this.props.settings[key];
 		return <ListItem noIndent style={a("pl-12")}>
+			<Text style={a("fx-1 px-10 fw-600")}>{text}</Text>
 			<View style={a("fx-1")}>
 				<Item regular>
 					<Input style={a("fz-16 h-30 p-0")} value={value.toString()}
-						onChangeText={text => key2 ? this.updateSettingsAndSetState({ [key2]: { [key]: { $set: parseFloat(text) } } })
-							: this.updateSettingsAndSetState({ [key]: { $set: parseFloat(text) } })}
+						onChangeText={text => {
+							text = !text || text.length === 0 ? 0 : text;
+							key2 ? this.updateSettingsAndSetState({ [key2]: { [key]: { $set: parseFloat(text) } } })
+								: this.updateSettingsAndSetState({ [key]: { $set: parseFloat(text) } })
+						}}
 						keyboardType="numeric" />
 				</Item>
 			</View>
-			<Text style={a("fx-1 ta-c")}>{text}</Text>
 		</ListItem>;
 	}
 
-
 	renderFontWeightSelectField(key/*: string */, text/*: string */, key2) {
 		const value = this.props.settings[key2][key];
-		return <View style={Platform.OS !== 'android' && { zIndex: 10 }}>
-			<Text style={a("fx-1 ta-c my-10")}>Font weight</Text>
+		return <View style={Platform.OS !== 'android' && { zIndex: 9 }}>
+			<Text style={a("fx-1 mx-10 my-15 pl-12 fw-600")}>Font weight</Text>
 			<DropDownPicker
 				items={[
 					{ label: 'Normal', value: 'normal' },
@@ -151,6 +155,27 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 				style={{
 					backgroundColor: '#ffffff', borderTopLeftRadius: 0, borderTopRightRadius: 0,
 					borderBottomLeftRadius: 0, borderBottomRightRadius: 0
+				}}
+				dropDownStyle={{ backgroundColor: 'white', marginHorizontal: 12 }}
+				onChangeItem={item => { this.updateSettingsAndSetState({ [key2]: { [key]: { $set: item.value } } }) }}
+			/>
+		</View >;
+	}
+
+	renderFontFamilyField(key/*: string */, text/*: string */, key2) {
+		const value = this.props.settings[key2][key];
+		return <View style={Platform.OS !== 'android' && { zIndex: 10 }}>
+			<Text style={a("mx-10 my-15 pl-12 fw-600")}>Font family</Text>
+			<DropDownPicker
+				items={Platform.OS === 'android' ?
+					fonts.Android.map(x => { return { label: x, value: x } }) :
+					fonts.iOS.map(x => { return { label: x, value: x } })}
+				defaultValue={value || 'PingFang SC'}
+				containerStyle={{ height: 30, paddingHorizontal: 12 }}
+				selectedLabelStyle={{ color: 'black' }}
+				style={{
+					backgroundColor: '#ffffff', borderTopLeftRadius: 0, borderTopRightRadius: 0,
+					borderBottomLeftRadius: 0, borderBottomRightRadius: 0,
 				}}
 				dropDownStyle={{ backgroundColor: 'white', marginHorizontal: 12 }}
 				onChangeItem={item => { this.updateSettingsAndSetState({ [key2]: { [key]: { $set: item.value } } }) }}
@@ -235,22 +260,78 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					{this.renderRegexTextField("splitRegexp", "Line split RegExp")}
 					<ListItem itemDivider><Text>Editing a line</Text></ListItem>
 					{this.renderTextEditConfigBlock("edits")}
-					<ListItem itemDivider><Text>Rendering lines</Text></ListItem>
-					{this.renderNumberTextField("linePaddingX", "Horizontal Padding")}
-					{this.renderNumberTextField("linePaddingY", "Vertical Padding")}
-					{this.renderColorTextField("pageColor", "Page Color")}
-					{this.renderColorTextField("lineColor", "Line Color")}
-					{this.renderColorTextField("lineSelectedColor", "Line Selected Color")}
-					{this.renderColorTextField("lineScheduledColor", "Line Scheduled Color")}
-					{this.renderColorTextField("lineReadingColor", "Line Reading Color")}
-					{this.renderColorTextField("lineReadColor", "Line Read Color")}
-					<ListItem itemDivider><Text>Rendering text</Text></ListItem>
-					{this.renderFontWeightSelectField("fontWeight", "Font weight", "textStyle")}
-					{this.renderNumberTextField("fontSize", "Font size", "textStyle")}
-					{this.renderColorTextField("color", "Font color", "textStyle")}
+					<View style={{ marginVertical: 20, backgroundColor: this.props.settings.pageColor }}>
+
+						{this.props.prevLine3 && <View style={{
+							backgroundColor: this.props.settings.lineReadColor,
+							paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,
+							paddingVertical: this.props.settings.linePaddingY ? this.props.settings.linePaddingY : 0,
+						}}>
+							<Text style={this.props.settings.textStyle}>[Read line] {this.props.prevLine3}</Text>
+						</View>}
+
+						{this.props.prevLine2 && <View style={{
+							backgroundColor: this.props.settings.lineReadingColor,
+							paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,
+							paddingVertical: this.props.settings.linePaddingY ? this.props.settings.linePaddingY : 0,
+						}}>
+							<Text style={this.props.settings.textStyle}>[Line being read] {this.props.prevLine2}</Text>
+						</View>}
+
+						{this.props.prevLine1 && <View style={{
+							backgroundColor: this.props.settings.lineScheduledColor,
+							paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,
+							paddingVertical: this.props.settings.linePaddingY ? this.props.settings.linePaddingY : 0,
+						}}>
+							<Text style={this.props.settings.textStyle}>[Line to be read (when audio paused)] {this.props.prevLine1}</Text>
+						</View>}
+
+						{this.props.prevLine0 && <View style={{
+							backgroundColor: this.props.settings.lineColor,
+							paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,
+							paddingVertical: this.props.settings.linePaddingY ? this.props.settings.linePaddingY : 0,
+						}}>
+							<Text style={this.props.settings.textStyle}>[Unread line] {this.props.prevLine0}</Text>
+						</View>}
 
 
+						<View style={{
+							backgroundColor: this.props.settings.lineSelectedColor,
+							paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,
+							paddingVertical: this.props.settings.linePaddingY ? this.props.settings.linePaddingY : 0,
+						}}>
+							<Text style={this.props.settings.textStyle}>[Selected line] {this.props.currentLine}</Text>
+						</View>
 
+
+					</View>
+
+					<Collapse>
+						<CollapseHeader>
+							<Text style={{ padding: 15 }}>Rendering lines</Text>
+						</CollapseHeader>
+						<CollapseBody>
+							{this.renderNumberTextField("linePaddingX", "Horizontal Padding")}
+							{this.renderNumberTextField("linePaddingY", "Vertical Padding")}
+							{this.renderColorTextField("pageColor", "Page Color")}
+							{this.renderColorTextField("lineColor", "Line Color")}
+							{this.renderColorTextField("lineSelectedColor", "Line Selected Color")}
+							{this.renderColorTextField("lineScheduledColor", "Line Scheduled Color")}
+							{this.renderColorTextField("lineReadingColor", "Line Reading Color")}
+							{this.renderColorTextField("lineReadColor", "Line Read Color")}
+						</CollapseBody>
+					</Collapse>
+					<Collapse>
+						<CollapseHeader>
+							<Text style={{ padding: 15 }}>Rendering text</Text>
+						</CollapseHeader>
+						<CollapseBody>
+							{this.renderFontFamilyField("fontFamily", "Font family", "textStyle")}
+							{this.renderFontWeightSelectField("fontWeight", "Font weight", "textStyle")}
+							{this.renderNumberTextField("fontSize", "Font size", "textStyle")}
+							{this.renderColorTextField("color", "Font color", "textStyle")}
+						</CollapseBody>
+					</Collapse>
 
 					<ListItem noIndent>
 						<View style={{ flex: 1 }}>
@@ -269,6 +350,6 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					/>}
 				</ScrollView>
 			</View>
-		</Container>
+		</Container >
 	}
 }

@@ -10,7 +10,7 @@ import Fs from "react-native-fs";
 import MeasureText from 'react-native-measure-text';
 import TextSize from 'react-native-text-size'
 import Store from "react-native-simple-store";
-
+import { fonts } from './fonts'
 
 import He from "he";
 import { TextDecoder } from "text-encoding";
@@ -69,7 +69,7 @@ function edit(text/*: string */, edits/*: Array<Edit> */) /*: string */ {
 
 function paint/*:: <T> */(text/*: string */, style/*: T */, paints/*: Array<Paint<T>> */) /*: Array<Segment<T>> */ {
 	var segments = [{ text, style }];
-	console.log(segments)
+	// console.log(segments)
 	paints.forEach(p => {
 		const re = new RegExp(p.regexp, "g");
 
@@ -277,6 +277,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		// });
 		this.measuringResults = await TextSize.flatHeights({
 			...this.state.settings.textStyle,
+
 			text: texts,
 			width: this.screenWidth - this.state.settings.linePaddingX * 2 - this.state.settings.measuringOffset,
 		});
@@ -334,12 +335,23 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		// paint as needed
 		if (!line.textSegments) line.textSegments = paint/*:: <TextStyle> */(line.text, this.state.settings.textStyle, this.state.settings.textPaints)
 
-		return <TouchableOpacity onPress={() => this.onLinePress(line)} activeOpacity={0.8}>
-			<Native.Text style={{
+		return <TouchableOpacity onPress={() => this.onLinePress(line)} activeOpacity={0.8}
+			style={{
+				backgroundColor,
+				height: (this.measuringResults[line.index] || this.state.settings.textStyle.fontSize) + this.state.settings.linePaddingY * 2 + this.state.settings.lineSpacing,
 				paddingHorizontal: this.state.settings.linePaddingX,
 				paddingVertical: this.state.settings.linePaddingY,
-				backgroundColor,
+				flexDirection: 'row',
+				flexWrap: 'wrap',
+				alignItems: 'stretch',
+			}}>
+
+			<Native.Text style={{
+				// paddingHorizontal: this.state.settings.linePaddingX,
+				// paddingVertical: this.state.settings.linePaddingY,
+				// backgroundColor,
 			}}>{line.textSegments.map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)}</Native.Text>
+
 		</TouchableOpacity>;
 	}
 
@@ -518,7 +530,26 @@ export default class Reader extends Component /*:: <Props, State> */ {
 					onChange={this.onSettingChange.bind(this)}
 					onApply={this.onSettingConfirm.bind(this)}
 					discardTempChange={this.discardTempChange.bind(this)}
-					settings={state.tempSettings} />;
+					settings={state.tempSettings}
+					currentLine={this.lines[this.selectedIndex].text}
+					prevLine3={(this.selectedIndex > 3 && this.lines[this.selectedIndex - 4].text)
+						|| (this.selectedIndex > 2 && this.lines[this.selectedIndex - 3].text)
+						|| (this.selectedIndex > 1 && this.lines[this.selectedIndex - 2].text)
+						|| (this.selectedIndex > 0 && this.lines[this.selectedIndex - 1].text)
+						|| this.lines[this.selectedIndex].text
+					}
+					prevLine2={(this.selectedIndex > 2 && this.lines[this.selectedIndex - 3].text)
+						|| (this.selectedIndex > 1 && this.lines[this.selectedIndex - 2].text)
+						|| (this.selectedIndex > 0 && this.lines[this.selectedIndex - 1].text)
+						|| this.lines[this.selectedIndex].text
+					}
+					prevLine1={(this.selectedIndex > 1 && this.lines[this.selectedIndex - 2].text)
+						|| (this.selectedIndex > 0 && this.lines[this.selectedIndex - 1].text)
+						|| this.lines[this.selectedIndex].text
+					}
+					prevLine0={this.selectedIndex > 0 && this.lines[this.selectedIndex - 1].text
+						|| this.lines[this.selectedIndex].text}
+				/>;
 		}
 
 		var voiceStyle = getValue(this, ["lines", this.selectedIndex, "voiceSegments", this.currentSpeechId, "style"], this.state.settings.voiceStyle);
