@@ -9,6 +9,8 @@ import Tts from "react-native-tts";
 import Fs from "react-native-fs";
 import MeasureText from 'react-native-measure-text';
 import TextSize from 'react-native-text-size'
+import Store from "react-native-simple-store";
+
 
 import He from "he";
 import { TextDecoder } from "text-encoding";
@@ -19,6 +21,9 @@ import { startAsync } from "./prom";
 import { toFullWidth, toHalfWidth } from "./fullWidth"
 
 import TextConfigPanel from "./TextConfigPanel";
+import { settings } from './settings'
+
+const SETTINGS = 'SETTINGS';
 
 /*:: import type { Book } from "./App" */
 /*:: import type { ElementRef } from "react" */
@@ -52,102 +57,6 @@ import TextConfigPanel from "./TextConfigPanel";
 
 const TEXT_CONFIG_PANEL = "TEXT_CONFIG_PANEL";
 
-export const settings = {
-	// preprocess
-	decodeHtml: true,
-	toFullWidth: false,
-	toHalfWidth: false,
-	preEdits: [
-		{ regexp: "★☆.*☆★", replace: "" },
-		{ regexp: " *([a-zA-Z0-9 ]+) *", replace: " $1 " },
-		{ regexp: "\\!", replace: "! " },
-		{ regexp: "\\?", replace: "? " },
-		{ regexp: "哄夜", replace: "咲夜" },
-	],
-
-	// split
-	splitRegexp: " *[\\n\\r]+ *",
-	removeEmptyLines: true,
-	measuringOffset: 0,  // doesn't quite work...
-
-	// edit
-	edits: [
-		{ regexp: "^", replace: "　　" },
-		{ regexp: " *(“.+?”) *", replace: " $1 " },
-		{ regexp: " *(‘.+?’) *", replace: " $1 " },
-	],
-
-	// rendering
-	textStyle: {
-		color: "#F7F7EF",
-		fontSize: 18,
-		fontWeight: "normal",
-		// fontFamily: "Roboto",
-		fontFamily: "PingFang SC",
-		fontStyle: "normal",
-		// lineHeight: 27,
-		backgroundColor: "#00000000",
-	},
-	textPaints: [
-		{ regexp: "第.+[卷章].+", style: { fontWeight: "bold", color: "#65D9EF" } },
-		{ regexp: "“+.+?”+", style: { color: "#E6DB73" } },
-		{ regexp: "「+.+?」+", style: { color: "#E6DB73" } },
-		{ regexp: "[a-zA-Z ]+", style: { color: "#B4E1D2" } },
-		{ regexp: "[0-9]+", style: { color: "#AE81FF" } },
-		{ regexp: "[零〇一二两三四五六七八九十百千万亿兆]+", style: { color: "#AE81FF" } },
-		{ regexp: "《+.+?》+", style: { color: "#F92671" } },
-		{ regexp: "【+.+?】+", style: { color: "#F92671" } },
-		{ regexp: "『+.+?』+", style: { color: "#F92671" } },
-		{ regexp: "[我你他她它]们?", style: { fontStyle: "italic" } },
-		{ regexp: "（+.+?）+", style: { color: "#74705E" } },
-		{ regexp: "\\(+.+?\\)+", style: { color: "#74705E" } },
-	],
-
-	linePaddingX: 0,
-	linePaddingY: 15,
-	lineSpacing: 0,
-
-	pageColor: "#000",
-	lineColor: "#00000022",
-	lineSelectedColor: "#ffffff44",
-	lineScheduledColor: "#00ccff44",
-	lineReadingColor: "#ffcccc44",
-	lineReadColor: "#ff008822",
-
-	// reading
-	scheduleLength: 100,
-	voiceStyle: {
-		// voiceId: "cmn-cn-x-ssa-local",
-		// pitch: .9,
-		// rate: .8
-		voiceId: "com.apple.ttsbundle.siri_female_zh-CN_premium",
-		pitch: 1,
-		rate: .6
-	},
-	voicePaints: [
-		// { regexp: "第.+[卷章].+", style: { pitch: .8, rate: 1 } },
-		// { regexp: "“+.+?”+", style: { pitch: 1.4, rate: .9 } },
-		// { regexp: "「+.+?」+", style: { pitch: 1.4, rate: .9 } },
-		// { regexp: "‘+.+?’+", style: { pitch: 1.2, rate: .8 } },
-		// { regexp: "『+.+?』+", style: { pitch: 1.2, rate: .8 } },
-		// { regexp: "（+.+?）+", style: { pitch: .6, rate: .8 } },
-		// { regexp: "\\(+.+?\\)+", style: { pitch: .6, rate: .8 } },
-		// { regexp: "[a-zA-Z][a-zA-Z0-9 ]*", style: { voiceId: "en-us-x-sfg#female_1-local" } },
-		// { regexp: "第.+[卷章].+", style: { pitch: .8, rate: 1 } },
-		{ regexp: "“+.+?”+", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium" } },
-		{ regexp: "「+.+?」+", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium" } },
-		{ regexp: "‘+.+?’+", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium", pitch: .7, rate: .5 } },
-		{ regexp: "『+.+?』+", style: { voiceId: "com.apple.ttsbundle.Mei-Jia-premium", pitch: .7, rate: .5 } },
-		{ regexp: "（+.+?）+", style: { pitch: .6, rate: .6 } },
-		{ regexp: "\\(+.+?\\)+", style: { pitch: .6, rate: .6 } },
-	],
-	voiceEdits: [
-		{ regexp: "[“”‘’（）\\(\\)「」『』]", replace: "" },
-		{ regexp: "^…+", replace: "" },
-		{ regexp: "(.)…+", replace: "$1$1$1。" },
-	]
-};
-
 function edit(text/*: string */, edits/*: Array<Edit> */) /*: string */ {
 	edits.forEach(e => text = text.replace(new RegExp(e.regexp, "g"), e.replace));
 	return text;
@@ -160,6 +69,7 @@ function edit(text/*: string */, edits/*: Array<Edit> */) /*: string */ {
 
 function paint/*:: <T> */(text/*: string */, style/*: T */, paints/*: Array<Paint<T>> */) /*: Array<Segment<T>> */ {
 	var segments = [{ text, style }];
+	console.log(segments)
 	paints.forEach(p => {
 		const re = new RegExp(p.regexp, "g");
 
@@ -293,9 +203,14 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		this.screenWidth = width;
 		this.lineLayoutProvider = new LayoutProvider(() => 0, (_, dim, index) => {
 			dim.width = width;
-			dim.height = (this.measuringResults[index] || settings.textStyle.fontSize) + settings.linePaddingY * 2 + settings.lineSpacing;
+			dim.height = (this.measuringResults[index] || this.state.settings.textStyle.fontSize) + this.state.settings.linePaddingY * 2 + this.state.settings.lineSpacing;
 		});
-		this.state = { loading: "Initializing...", dataProvider: this.lineDataProvider.cloneWithRows([]) };
+		this.state = {
+			settings: {},
+			tempSettings: {},
+			loading: "Initializing...",
+			dataProvider: this.lineDataProvider.cloneWithRows([])
+		};
 
 		this.selectedIndex = props.book.selectedIndex || 0;
 	}
@@ -306,6 +221,13 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 	async init() {
 		const props = this.props;
+
+		this.setState({ loading: "Loading settings..." });
+		let cachedSetting = await Store.get(SETTINGS);
+		if (!cachedSetting) {
+			cachedSetting = settings;
+		}
+		this.setState({ settings: cachedSetting, tempSettings: JSON.parse(JSON.stringify(cachedSetting)) });
 
 		this.setState({ loading: "Loading file..." });
 		const base64 = await Fs.readFile(props.basePath + props.book.hash, "base64");
@@ -319,25 +241,25 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		this.parseText(this.text);
 	}
 
-	async parseText(text/*: string */) {
+	async parseText(text/*: string    */) {
 		this.setState({ loading: "Preprocessing text..." });
 		text = await startAsync/*:: <string> */(resolve => {
-			if (settings.decodeHtml) text = He.decode(text);
-			if (settings.toFullWidth) text = toFullWidth(text);
-			if (settings.toHalfWidth) text = toHalfWidth(text);
-			resolve(edit(text, settings.preEdits));
+			if (this.state.settings.decodeHtml) text = He.decode(text);
+			if (this.state.settings.toFullWidth) text = toFullWidth(text);
+			if (this.state.settings.toHalfWidth) text = toHalfWidth(text);
+			resolve(edit(text, this.state.settings.preEdits));
 		});
 
 		this.setState({ loading: "Splitting text..." });
 		const texts /*: Array<string> */ = await startAsync/*:: <Array<string>> */(resolve => {
-			var texts = text.split(new RegExp(settings.splitRegexp));
-			if (settings.removeEmptyLines) texts = texts.filter(x => x);
+			var texts = text.split(new RegExp(this.state.settings.splitRegexp));
+			texts = texts.filter(x => x && x.length > 1);
 			resolve(texts);
 		});
 
 		this.setState({ loading: "Editing texts..." });
 		const edited = await startAsync/*:: <Array<string>> */(resolve => {
-			resolve(texts.map(text => edit(text, settings.edits)))
+			resolve(texts.map(text => edit(text, this.state.settings.edits)))
 		});
 
 		const lines = edited.map((text, index) => ({
@@ -349,14 +271,14 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 		this.setState({ loading: "Measuring lines..." });
 		// this.measuringResults = await MeasureText.heights({
-		// 	...settings.textStyle,
+		// 	...this.state.settings.textStyle,
 		// 	texts,
-		// 	width: this.screenWidth - settings.linePaddingX * 2 - settings.measuringOffset,
+		// 	width: this.screenWidth - this.state.settings.linePaddingX * 2 - this.state.settings.measuringOffset,
 		// });
 		this.measuringResults = await TextSize.flatHeights({
-			...settings.textStyle,
+			...this.state.settings.textStyle,
 			text: texts,
-			width: this.screenWidth - settings.linePaddingX * 2 - settings.measuringOffset,
+			width: this.screenWidth - this.state.settings.linePaddingX * 2 - this.state.settings.measuringOffset,
 		});
 
 		this.setState({
@@ -366,7 +288,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 		try {
 			await Tts.getInitStatus();
-			Tts.voices().then(v => console.log(v));
+			// Tts.voices().then(v => console.log(v));
 			// Tts.voices().then(v => console.log(v.filter(x => !x.notInstalled && !x.networkConnectionRequired)));
 			// Tts.setDefaultLanguage("en-US");
 			// Tts.setDefaultVoice("com.apple.ttsbundle.Samantha-compact");
@@ -403,19 +325,19 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	}
 
 	renderLine(_/*: number */, line/*: Line */) {
-		var backgroundColor = settings.lineColor;
-		if (line.isReading) backgroundColor = settings.lineReadingColor;
-		else if (line.isSelected) backgroundColor = settings.lineSelectedColor;
-		else if (line.isRead) backgroundColor = settings.lineReadColor;
-		else if (line.voiceSegments) backgroundColor = settings.lineScheduledColor;
+		var backgroundColor = this.state.settings.lineColor;
+		if (line.isReading) backgroundColor = this.state.settings.lineReadingColor;
+		else if (line.isSelected) backgroundColor = this.state.settings.lineSelectedColor;
+		else if (line.isRead) backgroundColor = this.state.settings.lineReadColor;
+		else if (line.voiceSegments) backgroundColor = this.state.settings.lineScheduledColor;
 
 		// paint as needed
-		if (!line.textSegments) line.textSegments = paint/*:: <TextStyle> */(line.text, settings.textStyle, settings.textPaints)
+		if (!line.textSegments) line.textSegments = paint/*:: <TextStyle> */(line.text, this.state.settings.textStyle, this.state.settings.textPaints)
 
 		return <TouchableOpacity onPress={() => this.onLinePress(line)} activeOpacity={0.8}>
 			<Native.Text style={{
-				paddingHorizontal: settings.linePaddingX,
-				paddingVertical: settings.linePaddingY,
+				paddingHorizontal: this.state.settings.linePaddingX,
+				paddingVertical: this.state.settings.linePaddingY,
 				backgroundColor,
 			}}>{line.textSegments.map(({ text, style }, i) => <Native.Text key={i.toString()} style={style}>{text}</Native.Text>)}</Native.Text>
 		</TouchableOpacity>;
@@ -433,8 +355,11 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	}
 
 	speakNextSegment() {
+		console.log('curent line', this.lines[this.selectedIndex])
+		console.log('curent selected index', this.selectedIndex)
 		if (this.lines[this.selectedIndex].voiceSegments) {
 			const segment = this.lines[this.selectedIndex].voiceSegments[this.currentSpeechId];
+
 			console.log(this.lines[this.selectedIndex].voiceSegments, segment);
 			setTtsVoiceStyle(segment.style);
 			if (Platform.OS === "android") {
@@ -447,10 +372,10 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 	onPlayButtonPress() {
 		if (!this.state.isPlaying) {
-			this.lastScheduledIndex = Math.min(this.lines.length - 1, this.selectedIndex + settings.scheduleLength);
+			this.lastScheduledIndex = Math.min(this.lines.length - 1, this.selectedIndex + this.state.settings.scheduleLength);
 			// if (this.listRef.current) this.listRef.current.scrollToIndex(this.selectedIndex);
 
-			const voiceSegments = buildVoiceSegments(this.lines[this.selectedIndex].text, settings.voiceStyle, settings.voicePaints, settings.voiceEdits);
+			const voiceSegments = buildVoiceSegments(this.lines[this.selectedIndex].text, this.state.settings.voiceStyle, this.state.settings.voicePaints, this.state.settings.voiceEdits);
 			this.updateLinesAndSetState({
 				[this.selectedIndex]: { $merge: { voiceSegments, lastSpeechId: voiceSegments.length - 1 } }
 			}, { isPlaying: true });
@@ -508,7 +433,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 
 			var voiceSegments;
 			do {
-				voiceSegments = buildVoiceSegments(this.lines[this.selectedIndex + 1].text, settings.voiceStyle, settings.voicePaints, settings.voiceEdits);
+				voiceSegments = buildVoiceSegments(this.lines[this.selectedIndex + 1].text, this.state.settings.voiceStyle, this.state.settings.voicePaints, this.state.settings.voiceEdits);
 				this.lines = update(this.lines, {
 					[this.selectedIndex]: { isRead: { $set: true }, isReading: { $set: false }, isSelected: { $set: false } },
 					[this.selectedIndex + 1]: { $merge: { voiceSegments, lastSpeechId: voiceSegments.length - 1 } }
@@ -566,15 +491,37 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		});
 	}
 
+	onSettingChange(tempSettings) {
+		this.setState({ tempSettings });
+	}
+
+	async onSettingConfirm() {
+		const temp = this.state.tempSettings;
+		const confirmed = JSON.parse(JSON.stringify(temp));
+		this.setState({ settings: confirmed });
+		await Store.update(SETTINGS, confirmed);
+		this.parseText(this.text);
+	}
+
+	discardTempChange() {
+		const tempSettings = JSON.parse(JSON.stringify(this.state.settings));
+		this.setState({ tempSettings });
+	}
+
 	render() {
 		const state = this.state;
 		const props = this.props;
 
 		switch (state.page) {
-			case TEXT_CONFIG_PANEL: return <TextConfigPanel {...state.pageProps} />;
+			case TEXT_CONFIG_PANEL:
+				return <TextConfigPanel {...state.pageProps}
+					onChange={this.onSettingChange.bind(this)}
+					onApply={this.onSettingConfirm.bind(this)}
+					discardTempChange={this.discardTempChange.bind(this)}
+					settings={state.tempSettings} />;
 		}
 
-		var voiceStyle = getValue(this, ["lines", this.selectedIndex, "voiceSegments", this.currentSpeechId, "style"], settings.voiceStyle);
+		var voiceStyle = getValue(this, ["lines", this.selectedIndex, "voiceSegments", this.currentSpeechId, "style"], this.state.settings.voiceStyle);
 		return <Container>
 			<Header>
 				<Left><Button transparent onPress={this.onBackButtonPress.bind(this)}>
@@ -583,7 +530,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 				<Body><Title>{props.book.title}</Title></Body>
 				<Right><Button transparent onPress={this.onTextConfigButtonPress.bind(this)}><Icon name="color-palette" /></Button></Right>
 			</Header>
-			<View style={{ flex: 1, backgroundColor: settings.pageColor }}>
+			<View style={{ flex: 1, backgroundColor: this.state.settings.pageColor }}>
 				{state.loading ? <Spinner /> : <RecyclerListView
 					ref={this.listRef}
 					layoutProvider={this.lineLayoutProvider}

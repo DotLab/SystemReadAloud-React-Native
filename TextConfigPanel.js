@@ -5,6 +5,7 @@ import Native, { View, FlatList, Dimensions, ScrollView, TouchableOpacity, Platf
 import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Text, List, ListItem, Footer, FooterTab, Spinner, CheckBox, Item, Input } from "native-base";
 import { RecyclerListView, DataProvider, LayoutProvider } from "recyclerlistview";
 import { SlidersColorPicker } from "react-native-color";
+import DropDownPicker from 'react-native-dropdown-picker';
 
 import Tts from "react-native-tts";
 import Fs from "react-native-fs";
@@ -19,8 +20,6 @@ import { base64ToRaw, rawToArray } from "./bit";
 import { startAsync } from "./prom";
 import { toFullWidth, toHalfWidth } from "./fullWidth"
 import a from "./acss";
-
-import { settings } from "./Reader";
 
 function isRegexpValid(regexp/*: string */) {
 	var isValid = true;
@@ -47,15 +46,21 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 	constructor(props/*: Props */) {
 		super(props);
 
-		this.state = { settings, doShowColorPicker: false, colorPickerProps: {}, colorPickerSwatches: [] };
+		this.state = { doShowColorPicker: false, colorPickerProps: {}, colorPickerSwatches: [] };
+	}
+
+	componentWillUnmount() {
+		this.props.discardTempChange();
 	}
 
 	updateSettingsAndSetState(spec) {
-		this.setState({ settings: update(this.state.settings, spec) });
+		let settings = this.props.settings;
+		settings = update(settings, spec);
+		this.props.onChange(settings);
 	}
 
 	renderCheckbox(key/*: string */, text/*: string */) {
-		const value = this.state.settings[key];
+		const value = this.props.settings[key];
 		return <ListItem noIndent>
 			<CheckBox checked={value} onPress={() => this.updateSettingsAndSetState({ [key]: { $set: !value } })} />
 			<Body><Text>{text}</Text></Body>
@@ -63,7 +68,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 	}
 
 	renderRegexTextField(key/*: string */, text/*: string */) {
-		const value = this.state.settings[key];
+		const value = this.props.settings[key];
 		const isValid = isRegexpValid(text);
 		return <ListItem noIndent style={a("pl-12")}>
 			<View style={a("fx-1")}>
@@ -77,8 +82,8 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		</ListItem>;
 	}
 
-	renderColorTextField(key/*: string */, text/*: string */) {
-		const value = this.state.settings[key];
+	renderColorTextField(key/*: string */, text/*: string */, key2) {
+		const value = key2 ? this.props.settings[key2][key] : this.props.settings[key];
 		return <ListItem noIndent style={a("pl-12")} onPress={() => {
 			this.setState({
 				doShowColorPicker: true,
@@ -87,14 +92,17 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					onOk: hex => {
 						this.state.doShowColorPicker = false;
 						this.state.colorPickerSwatches.push(hex);
-						this.updateSettingsAndSetState({ [key]: { $set: hex } });
+						key2 ? this.updateSettingsAndSetState({ [key2]: { [key]: { $set: hex } } })
+							: this.updateSettingsAndSetState({ [key]: { $set: hex } });
 					},
 				}
 			});
 		}}>
 			<View style={a("fx-1")}>
 				<Item regular>
-					<Input style={a("fz-16 h-30 p-0")} value={value} onChangeText={text => this.updateSettingsAndSetState({ [key]: { $set: text } })} />
+					<Input style={a("fz-16 h-30 p-0")} value={value}
+						onChangeText={text => key2 ? this.updateSettingsAndSetState({ [key2]: { [key]: { $set: text } } })
+							: this.updateSettingsAndSetState({ [key]: { $set: text } })} />
 				</Item>
 			</View>
 			<Text style={a("fx-1 ta-c")}>{text}</Text>
@@ -102,20 +110,56 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		</ListItem>;
 	}
 
-	renderNumberTextField(key/*: string */, text/*: string */) {
-		const value = this.state.settings[key];
+	renderNumberTextField(key/*: string */, text/*: string */, key2) {
+		const value = key2 ? this.props.settings[key2][key] : this.props.settings[key];
 		return <ListItem noIndent style={a("pl-12")}>
 			<View style={a("fx-1")}>
 				<Item regular>
-					<Input style={a("fz-16 h-30 p-0")} value={value.toString()} onChangeText={text => this.updateSettingsAndSetState({ [key]: { $set: parseFloat(text) } })} keyboardType="numeric" />
+					<Input style={a("fz-16 h-30 p-0")} value={value.toString()}
+						onChangeText={text => key2 ? this.updateSettingsAndSetState({ [key2]: { [key]: { $set: parseFloat(text) } } })
+							: this.updateSettingsAndSetState({ [key]: { $set: parseFloat(text) } })}
+						keyboardType="numeric" />
 				</Item>
 			</View>
 			<Text style={a("fx-1 ta-c")}>{text}</Text>
 		</ListItem>;
 	}
 
+
+	renderFontWeightSelectField(key/*: string */, text/*: string */, key2) {
+		const value = this.props.settings[key2][key];
+		return <View style={Platform.OS !== 'android' && { zIndex: 10 }}>
+			<Text style={a("fx-1 ta-c my-10")}>Font weight</Text>
+			<DropDownPicker
+				items={[
+					{ label: 'Normal', value: 'normal' },
+					{ label: 'Bold', value: 'bold' },
+					{ label: '100', value: '100' },
+					{ label: '200', value: '200' },
+					{ label: '300', value: '300' },
+					{ label: '400', value: '400' },
+					{ label: '500', value: '500' },
+					{ label: '600', value: '600' },
+					{ label: '700', value: '700' },
+					{ label: '800', value: '800' },
+					{ label: '900', value: '900' },
+
+				]}
+				defaultValue={value || 'normal'}
+				containerStyle={{ height: 30, paddingHorizontal: 12 }}
+				selectedLabelStyle={{ color: 'black' }}
+				style={{
+					backgroundColor: '#ffffff', borderTopLeftRadius: 0, borderTopRightRadius: 0,
+					borderBottomLeftRadius: 0, borderBottomRightRadius: 0
+				}}
+				dropDownStyle={{ backgroundColor: 'white', marginHorizontal: 12 }}
+				onChangeItem={item => { this.updateSettingsAndSetState({ [key2]: { [key]: { $set: item.value } } }) }}
+			/>
+		</View >;
+	}
+
 	renderTextEditConfigBlock(key/*: string */) {
-		const value = this.state.settings[key];
+		const value = this.props.settings[key];
 		return value.map(({ regexp, replace }, i) => {
 			const isValid = isRegexpValid(regexp);
 			return <ListItem noIndent key={i.toString()} style={a("pl-12")}>
@@ -175,7 +219,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					<Icon name="close" />
 				</Button></Left>
 				<Body><Title>Text Config</Title></Body>
-				<Right><Button transparent onPress={() => this.props.onApply(this.state.settings)}>
+				<Right><Button transparent onPress={() => this.props.onApply()}>
 					<Icon name="checkmark" />
 				</Button></Right>
 			</Header>
@@ -189,7 +233,6 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					{this.renderTextEditConfigBlock("preEdits")}
 					<ListItem itemDivider><Text>Splitting lines</Text></ListItem>
 					{this.renderRegexTextField("splitRegexp", "Line split RegExp")}
-					{this.renderCheckbox("removeEmptyLines", "Remove empty lines")}
 					<ListItem itemDivider><Text>Editing a line</Text></ListItem>
 					{this.renderTextEditConfigBlock("edits")}
 					<ListItem itemDivider><Text>Rendering lines</Text></ListItem>
@@ -202,6 +245,13 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					{this.renderColorTextField("lineReadingColor", "Line Reading Color")}
 					{this.renderColorTextField("lineReadColor", "Line Read Color")}
 					<ListItem itemDivider><Text>Rendering text</Text></ListItem>
+					{this.renderFontWeightSelectField("fontWeight", "Font weight", "textStyle")}
+					{this.renderNumberTextField("fontSize", "Font size", "textStyle")}
+					{this.renderColorTextField("color", "Font color", "textStyle")}
+
+
+
+
 					<ListItem noIndent>
 						<View style={{ flex: 1 }}>
 						</View>

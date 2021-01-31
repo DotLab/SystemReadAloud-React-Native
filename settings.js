@@ -13,7 +13,6 @@ export const settings = {
 
     // split
     splitRegexp: " *[\\n\\r]+ *",
-    removeEmptyLines: true,
     measuringOffset: 0,  // doesn't quite work...
 
     // edit
@@ -66,7 +65,7 @@ export const settings = {
         // voiceId: "cmn-cn-x-ssa-local",
         // pitch: .9,
         // rate: .8
-        voiceId: "com.apple.ttsbundle.siri_female_zh-CN_premium",
+        voiceId: "com.apple.ttsbundle.Ting-Ting-compact",
         pitch: 1,
         rate: .6
     },
