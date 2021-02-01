@@ -307,8 +307,6 @@ class App extends Component /*:: <Props, State> */ {
 		if (!this.state.isEditMode) this.reloadLibrary();
 	}
 
-
-
 	async onImportButtonPress() {
 		try {
 			const res = await DocumentPicker.pick({ type: [DocumentPicker.types.plainText] });

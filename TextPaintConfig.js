@@ -117,7 +117,7 @@ export default class TextPaintConfig extends Component /*:: <Props, State> */ {
             </Header>
             <View style={{ flex: 1 }}>
                 <ScrollView style={{ flex: 1 }}>
-                    <View style={{ marginVertical: 20, backgroundColor: this.props.settings.pageColor }}>
+                    <View style={{ marginBottom: 20, backgroundColor: this.props.settings.pageColor }}>
                         <View style={{
                             backgroundColor: this.props.settings.lineColor,
                             paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,

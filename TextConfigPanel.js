@@ -1,7 +1,7 @@
 // @flow
 
 import React, { Component } from "react";
-import { View, ScrollView, Platform } from "react-native";
+import { View, ScrollView, Platform, TouchableOpacity } from "react-native";
 import { Container, Header, Left, Body, Right, Button, Icon, Title, Text, ListItem, CheckBox, Item, Input } from "native-base";
 import { SlidersColorPicker } from "react-native-color";
 import DropDownPicker from 'react-native-dropdown-picker';
@@ -207,13 +207,22 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					<Item regular success={isValid} error={!isValid}>
 						<Input style={a("fz-16 h-30 p-0")} value={regexp} onChangeText={text => this.onTextEditBlockTextChange(key, i, "regexp", text)} />
 					</Item>
-					<Button transparent onPress={() => this.onTextPaintButtonPress(i, regexp)}>
-						<Icon style={{ paddingVertical: 5, paddingHorizontal: 10, fontSize: 18 }} type="Feather" name="edit-2" />
-					</Button>
+					<TouchableOpacity transparent onPress={() => this.onTextPaintButtonPress(i, regexp)}>
+						<View style={{ backgroundColor: this.props.settings.pageColor }}>
+							<View style={{
+								backgroundColor: this.props.settings.lineColor,
+								paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,
+								paddingVertical: this.props.settings.linePaddingY ? this.props.settings.linePaddingY : 0,
+							}}>
+								<Text style={this.props.settings.textPaints[parseFloat(i)].style}>Sample text</Text>
+							</View>
+						</View>
+						{/* <Icon style={{ paddingVertical: 5, paddingHorizontal: 10, fontSize: 18 }} type="Feather" name="edit-2" /> */}
+					</TouchableOpacity>
 				</View>
 				<View style={a("pl-5")}>
 					<Button small style={a("as-c")} danger onPress={() => this.onTextEditBlockDeleteButtonPress(key, i)}><Icon name="trash" /></Button>
-					<Button small style={a("as-c")} success onPress={() => this.onTextEditBlockCopyButtonPress(key, i)}><Icon name="copy" /></Button>
+					<Button small style={a("as-c")} success onPress={() => this.onTextPaintBlockCopyButtonPress(key, i)}><Icon name="copy" /></Button>
 				</View>
 				<View style={a("pl-5")}>
 					<Button small style={a("as-c")} light onPress={() => this.onTextEditBlockUpButtonPress(key, i)}><Icon name="arrow-up" /></Button>
@@ -232,20 +241,25 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 	}
 
 	onTextEditBlockCopyButtonPress(key/*: string */, i/*: number */) {
-		const { regexp, replace } = this.state[key][i];
+		const { regexp, replace } = this.props.settings[key][i];
 		this.updateSettingsAndSetState({ [key]: { $splice: [[i, 0, { regexp, replace }]] } });
 	}
 
+	onTextPaintBlockCopyButtonPress(key/*: string */, i/*: number */) {
+		const { regexp, style } = this.props.settings[key][i];
+		this.updateSettingsAndSetState({ [key]: { $splice: [[i, 0, { regexp, style }]] } });
+	}
+
 	onTextEditBlockUpButtonPress(key/*: string */, i/*: number */) {
-		if (0 < i && i <= this.state[key].length - 1) {
-			const value = this.state[key][i];
+		if (0 < i && i <= this.props.settings[key].length - 1) {
+			const value = this.props.settings[key][i];
 			this.updateSettingsAndSetState({ [key]: { $splice: [[i, 1], [i - 1, 0, value]] } });
 		}
 	}
 
 	onTextEditBlockDownButtonPress(key/*: string */, i/*: number */) {
-		if (0 <= i && i < this.state[key].length - 1) {
-			const value = this.state[key][i];
+		if (0 <= i && i < this.props.settings[key].length - 1) {
+			const value = this.props.settings[key][i];
 			this.updateSettingsAndSetState({ [key]: { $splice: [[i, 1], [i + 1, 0, value]] } });
 		}
 	}
