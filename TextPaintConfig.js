@@ -21,16 +21,14 @@ export default class TextPaintConfig extends Component /*:: <Props, State> */ {
     }
 
     updateSettingsAndSetState(spec) {
-        console.log(spec)
         let settings = this.props.settings;
         settings = update(settings, spec);
-        console.log(settings.textPaints)
         this.props.onSettingChange(settings);
     }
 
     renderColorTextField(key/*: string */, text/*: string */, key2, i) {
         const value = this.props.settings[key2][i]["style"][key] || this.props.settings["textStyle"][key];
-        console.log(value)
+
         return <ListItem noIndent style={a("pl-12")} onPress={() => {
             this.setState({
                 doShowColorPicker: true,

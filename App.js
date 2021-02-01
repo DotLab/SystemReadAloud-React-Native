@@ -7,6 +7,10 @@ import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Tex
 import Store from "react-native-simple-store";
 import Tts from "react-native-tts";
 import Fs from "react-native-fs";
+import DocumentPicker from 'react-native-document-picker';
+import * as FileSystem from 'expo-file-system';
+// import RNFetchBlob from 'rn-fetch-blob'
+// import ReceiveSharingIntent from 'react-native-receive-sharing-intent';
 
 import md5 from "js-md5";
 import { TextDecoder } from "text-encoding";
@@ -44,26 +48,52 @@ function generateSortTitle(title) {
 
 async function importBook(title, uri, basePath) {
 	console.log("importing", title, uri);
-	
 	const text = await Fs.readFile(uri, "base64");
 	const raw = base64ToRaw(text);
 	const hash /*: string */ = md5(raw);
 	await Fs.writeFile(basePath + hash, text, "base64");
-	
-	await Store.update(LIBRARY, { [hash]: {
-		title,
-		originalTitle: title,
-		sortTitle: generateSortTitle(title),
-		encoding: encodings[0],
-		hash,
-		size: raw.length,
-		dateImported: new Date(),
-		excerptRaw: raw.substr(0, 128),
-		viewingLine: "",
-		viewingIndex: 0,
-		selectedIndex: 0,
-		lineCount: 0,
-	} });
+
+	await Store.update(LIBRARY, {
+		[hash]: {
+			title,
+			originalTitle: title,
+			sortTitle: generateSortTitle(title),
+			encoding: encodings[0],
+			hash,
+			size: raw.length,
+			dateImported: new Date(),
+			excerptRaw: raw.substr(0, 128),
+			viewingLine: "",
+			viewingIndex: 0,
+			selectedIndex: 0,
+			lineCount: 0,
+		}
+	});
+}
+
+async function importBookFromDevice(title, uri, basePath) {
+	console.log("importing", title, uri);
+	const text = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+	const raw = base64ToRaw(text);
+	const hash /*: string */ = md5(raw);
+	await Fs.writeFile(basePath + hash, text, "base64");
+
+	await Store.update(LIBRARY, {
+		[hash]: {
+			title,
+			originalTitle: title,
+			sortTitle: generateSortTitle(title),
+			encoding: encodings[0],
+			hash,
+			size: raw.length,
+			dateImported: new Date(),
+			excerptRaw: raw.substr(0, 128),
+			viewingLine: "",
+			viewingIndex: 0,
+			selectedIndex: 0,
+			lineCount: 0,
+		}
+	});
 }
 
 /*:: type Props = {} */
@@ -106,7 +136,7 @@ class App extends Component /*:: <Props, State> */ {
 		this.basePath = Fs.DocumentDirectoryPath + "/";
 		this.listRef = React.createRef();
 	}
-	
+
 	componentDidMount() {
 		this.init();
 	}
@@ -166,22 +196,26 @@ class App extends Component /*:: <Props, State> */ {
 
 		Store.update(LIBRARY, { [book.hash]: null });
 		Fs.unlink(this.basePath + book.hash);
-		this.setState(update(this.state, { books: { $splice: [ [ book.index, 1 ] ] } }));
+		this.setState(update(this.state, { books: { $splice: [[book.index, 1]] } }));
 	}
-	
+
 	changeBookTitle(book, title) {
 		const sortTitle = generateSortTitle(title);
 		Store.update(LIBRARY, { [book.hash]: { title, sortTitle } });
-		this.setState(update(this.state, { books: { [book.index]: {
-			title: { $set: title }, sortTitle: { $set: sortTitle }
-		} } }));
+		this.setState(update(this.state, {
+			books: {
+				[book.index]: {
+					title: { $set: title }, sortTitle: { $set: sortTitle }
+				}
+			}
+		}));
 	}
 
 	onBookListItemActionSheetSelect(book /*: Book */, index) {
 		switch (index) {
-		case 0: return;  // config
-		case 1: this.pickBookEncoding(book); return;  // encoding
-		case 2: this.deleteBook(book); return; // delete
+			case 0: return;  // config
+			case 1: this.pickBookEncoding(book); return;  // encoding
+			case 2: this.deleteBook(book); return; // delete
 		}
 	}
 
@@ -192,16 +226,22 @@ class App extends Component /*:: <Props, State> */ {
 				book,
 				basePath: this.basePath,
 				onClose: (viewingLine, viewingIndex, selectedIndex, lineCount) => {
-					Store.update(LIBRARY, { [book.hash]: {
-						viewingLine, viewingIndex, selectedIndex, lineCount,
-					} });
+					Store.update(LIBRARY, {
+						[book.hash]: {
+							viewingLine, viewingIndex, selectedIndex, lineCount,
+						}
+					});
 					// this.setState({ page: undefined });
-					this.setState(update(this.state, { page: { $set: undefined }, books: { [book.index]: {
-						viewingLine: { $set: viewingLine },
-						viewingIndex: { $set: viewingIndex },
-						selectedIndex: { $set: selectedIndex },
-						lineCount: { $set: lineCount },
-					} } }));
+					this.setState(update(this.state, {
+						page: { $set: undefined }, books: {
+							[book.index]: {
+								viewingLine: { $set: viewingLine },
+								viewingIndex: { $set: viewingIndex },
+								selectedIndex: { $set: selectedIndex },
+								lineCount: { $set: lineCount },
+							}
+						}
+					}));
 				}
 			}
 		});
@@ -210,9 +250,9 @@ class App extends Component /*:: <Props, State> */ {
 	renderBookListItem(book/*: Book */, isEditMode/*: boolean */) {
 		if (isEditMode) {
 			return <ListItem noIndent style={{ paddingLeft: 0 }}>
-				<Body><Item regular><Input 
-					style={{ fontSize: 14, height: 40 }} 
-					value={book.title} 
+				<Body><Item regular><Input
+					style={{ fontSize: 14, height: 40 }}
+					value={book.title}
 					onChangeText={text => this.changeBookTitle(book, text)}
 				/></Item></Body>
 				<Right>
@@ -223,10 +263,10 @@ class App extends Component /*:: <Props, State> */ {
 			</ListItem>
 		}
 
-		return <ListItem 
-			button noIndent 
+		return <ListItem
+			button noIndent
 			style={{ paddingLeft: 0 }}
-			selected={book.originalTitle === this.state.importedBookTitle} 
+			selected={book.originalTitle === this.state.importedBookTitle}
 			onPress={() => this.onBookListItemPress(book)}
 		>
 			<Body>
@@ -267,13 +307,34 @@ class App extends Component /*:: <Props, State> */ {
 		if (!this.state.isEditMode) this.reloadLibrary();
 	}
 
+
+
+	async onImportButtonPress() {
+		try {
+			const res = await DocumentPicker.pick({ type: [DocumentPicker.types.plainText] });
+
+			const text = await FileSystem.readAsStringAsync(res.uri)
+			console.log(text)
+
+			this.setState({ page: undefined, importedBookTitle: res.name });
+			await importBookFromDevice(res.name, res.uri, this.basePath);
+			this.reloadLibrary();
+		} catch (err) {
+			if (DocumentPicker.isCancel(err)) {
+				// User cancelled the picker, exit any dialogs or menus and move on
+			} else {
+				throw err;
+			}
+		}
+	}
+
 	render() {
 		const state = this.state;
 
 		switch (state.page) {
-		case ENCODING_PICKER: return <EncodingPicker {...state.pageProps} />; 
-		case READER: return <Reader {...state.pageProps} />; 
-		case DOWNLOADER: return <Downloader {...state.pageProps} />;
+			case ENCODING_PICKER: return <EncodingPicker {...state.pageProps} />;
+			case READER: return <Reader {...state.pageProps} />;
+			case DOWNLOADER: return <Downloader {...state.pageProps} />;
 		}
 
 		return <Container>
@@ -286,8 +347,8 @@ class App extends Component /*:: <Props, State> */ {
 					{!state.isEditMode && <Button transparent onPress={this.onAddButtonPress.bind(this)}><Icon name="download" /></Button>}
 				</Right>
 			</Header>
-			
-			<View style={{ flex: 1 }}>
+
+			<View style={{ flex: 5 }}>
 				{state.books ? <FlatList
 					ref={this.listRef}
 					data={state.books}
@@ -297,7 +358,11 @@ class App extends Component /*:: <Props, State> */ {
 					onMomentumScrollEnd={e => Store.save(BOOK_LIST_OFFSET, e.nativeEvent.contentOffset.y)}
 				/> : <Spinner />}
 			</View>
-
+			<View style={{ margin: 10, flex: 1, flexDirection: 'row', justifyContent: 'flex-end' }} >
+				<Button transparent onPress={this.onImportButtonPress.bind(this)}>
+					<Icon type="FontAwesome" name="plus" />
+				</Button>
+			</View>
 			{state.importedBookTitle && <Footer>
 				<FooterTab>
 					<Button active><Text>{state.importedBookTitle}</Text></Button>
