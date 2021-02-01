@@ -1,27 +1,18 @@
 // @flow
 
 import React, { Component } from "react";
-import Native, { View, FlatList, Dimensions, ScrollView, TouchableOpacity, Platform } from "react-native";
-import { Container, Content, Header, Left, Body, Right, Button, Icon, Title, Text, List, ListItem, Footer, FooterTab, Spinner, CheckBox, Item, Input } from "native-base";
-import { RecyclerListView, DataProvider, LayoutProvider } from "recyclerlistview";
+import { View, ScrollView, Platform } from "react-native";
+import { Container, Header, Left, Body, Right, Button, Icon, Title, Text, ListItem, CheckBox, Item, Input } from "native-base";
 import { SlidersColorPicker } from "react-native-color";
 import DropDownPicker from 'react-native-dropdown-picker';
 import { fonts } from './fonts'
 import { Collapse, CollapseHeader, CollapseBody } from "accordion-collapse-react-native";
 
-import Tts from "react-native-tts";
-import Fs from "react-native-fs";
-import MeasureText from 'react-native-measure-text';
-import TextSize from 'react-native-text-size'
-
-import He from "he";
-import { TextDecoder } from "text-encoding";
 import update from 'immutability-helper';
-
-import { base64ToRaw, rawToArray } from "./bit";
-import { startAsync } from "./prom";
-import { toFullWidth, toHalfWidth } from "./fullWidth"
 import a from "./acss";
+
+const TEXT_PAINT_CONFIG = "TEXT_PAINT_CONFIG";
+import TextPaintConfig from './TextPaintConfig'
 
 function isRegexpValid(regexp/*: string */) {
 	var isValid = true;
@@ -49,6 +40,8 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		super(props);
 
 		this.state = { doShowColorPicker: false, colorPickerProps: {}, colorPickerSwatches: [] };
+
+		this.onTextPaintButtonPress.bind(this)
 	}
 
 	componentWillUnmount() {
@@ -76,8 +69,6 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 			<View style={a("fx-1")}>
 				<Item regular success={isValid} error={!isValid}>
 					<Input style={a("fz-16 h-30 p-0")} value={value} onChangeText={text => this.updateSettingsAndSetState({ [key]: { $set: text } })} />
-					{/* {!!isValid && <Icon name='checkmark-circle' />}
-					{!isValid && <Icon name='close-circle' />} */}
 				</Item>
 			</View>
 			<Text style={a("fx-1 ta-c")}>{text}</Text>
@@ -147,7 +138,6 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					{ label: '700', value: '700' },
 					{ label: '800', value: '800' },
 					{ label: '900', value: '900' },
-
 				]}
 				defaultValue={value || 'normal'}
 				containerStyle={{ height: 30, paddingHorizontal: 12 }}
@@ -191,12 +181,35 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 				<View style={{ flex: 1 }}>
 					<Item regular success={isValid} error={!isValid}>
 						<Input style={a("fz-16 h-30 p-0")} value={regexp} onChangeText={text => this.onTextEditBlockTextChange(key, i, "regexp", text)} />
-						{/* {!!isValid && <Icon name='checkmark-circle' />}
-						{!isValid && <Icon name='close-circle' />} */}
 					</Item>
 					<Item regular>
 						<Input style={a("fz-16 h-30 p-0")} value={replace} onChangeText={text => this.onTextEditBlockTextChange(key, i, "replace", text)} />
 					</Item>
+				</View>
+				<View style={a("pl-5")}>
+					<Button small style={a("as-c")} danger onPress={() => this.onTextEditBlockDeleteButtonPress(key, i)}><Icon name="trash" /></Button>
+					<Button small style={a("as-c")} success onPress={() => this.onTextEditBlockCopyButtonPress(key, i)}><Icon name="copy" /></Button>
+				</View>
+				<View style={a("pl-5")}>
+					<Button small style={a("as-c")} light onPress={() => this.onTextEditBlockUpButtonPress(key, i)}><Icon name="arrow-up" /></Button>
+					<Button small style={a("as-c")} light onPress={() => this.onTextEditBlockDownButtonPress(key, i)}><Icon name="arrow-down" /></Button>
+				</View>
+			</ListItem>;
+		});
+	}
+
+	renderTextPaintConfigBlock(key/*: string */) {
+		const value = this.props.settings[key];
+		return value.map(({ regexp }, i) => {
+			const isValid = isRegexpValid(regexp);
+			return <ListItem noIndent key={i.toString()} style={a("pl-12")}>
+				<View style={{ flex: 1 }}>
+					<Item regular success={isValid} error={!isValid}>
+						<Input style={a("fz-16 h-30 p-0")} value={regexp} onChangeText={text => this.onTextEditBlockTextChange(key, i, "regexp", text)} />
+					</Item>
+					<Button transparent onPress={() => this.onTextPaintButtonPress(i, regexp)}>
+						<Icon style={{ paddingVertical: 5, paddingHorizontal: 10, fontSize: 18 }} type="Feather" name="edit-2" />
+					</Button>
 				</View>
 				<View style={a("pl-5")}>
 					<Button small style={a("as-c")} danger onPress={() => this.onTextEditBlockDeleteButtonPress(key, i)}><Icon name="trash" /></Button>
@@ -237,7 +250,42 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		}
 	}
 
+	onTextPaintButtonPress(i, regExp) {
+		this.setState({
+			page: TEXT_PAINT_CONFIG,
+			pageProps: {
+				i, regExp,
+				onClose: () => {
+					this.setState({ page: undefined });
+				}
+			}
+		});
+	}
+
+	onSettingChange(tempSettings) {
+		this.props.onChange(tempSettings);
+	}
+
+	async onSettingConfirm() {
+		await this.props.onApply();
+	}
+
+	discardTempChange() {
+		this.props.discardTempChange();
+	}
+
 	render() {
+		switch (this.state.page) {
+			case TEXT_PAINT_CONFIG:
+				return <TextPaintConfig {...this.state.pageProps}
+					onSettingChange={this.onSettingChange.bind(this)}
+					onSettingConfirm={this.onSettingConfirm.bind(this)}
+					discardTempChange={this.discardTempChange.bind(this)}
+					settings={this.props.settings}
+					currentLine={this.props.currentLine}
+				/>
+		}
+
 		return <Container>
 			<Header>
 				<Left><Button transparent onPress={this.props.onClose}>
@@ -261,7 +309,6 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					<ListItem itemDivider><Text>Editing a line</Text></ListItem>
 					{this.renderTextEditConfigBlock("edits")}
 					<View style={{ marginVertical: 20, backgroundColor: this.props.settings.pageColor }}>
-
 						{this.props.prevLine3 && <View style={{
 							backgroundColor: this.props.settings.lineReadColor,
 							paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,
@@ -294,7 +341,6 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 							<Text style={this.props.settings.textStyle}>[Unread line] {this.props.prevLine0}</Text>
 						</View>}
 
-
 						<View style={{
 							backgroundColor: this.props.settings.lineSelectedColor,
 							paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,
@@ -302,13 +348,11 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 						}}>
 							<Text style={this.props.settings.textStyle}>[Selected line] {this.props.currentLine}</Text>
 						</View>
-
-
 					</View>
 
 					<Collapse>
 						<CollapseHeader>
-							<Text style={{ padding: 15 }}>Rendering lines</Text>
+							<Text style={{ padding: 15, fontSize: 17 }}>Rendering lines</Text>
 						</CollapseHeader>
 						<CollapseBody>
 							{this.renderNumberTextField("linePaddingX", "Horizontal Padding")}
@@ -323,7 +367,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					</Collapse>
 					<Collapse>
 						<CollapseHeader>
-							<Text style={{ padding: 15 }}>Rendering text</Text>
+							<Text style={{ padding: 15, fontSize: 17 }}>Rendering text</Text>
 						</CollapseHeader>
 						<CollapseBody>
 							{this.renderFontFamilyField("fontFamily", "Font family", "textStyle")}
@@ -332,12 +376,12 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 							{this.renderColorTextField("color", "Font color", "textStyle")}
 						</CollapseBody>
 					</Collapse>
-
+					<ListItem itemDivider><Text>RegExp Text Style</Text></ListItem>
+					{this.renderTextPaintConfigBlock("textPaints")}
 					<ListItem noIndent>
 						<View style={{ flex: 1 }}>
 						</View>
 					</ListItem>
-					<ListItem itemDivider><Text>Painting text</Text></ListItem>
 					{this.state.doShowColorPicker && <SlidersColorPicker
 						{...this.state.colorPickerProps}
 						visible={true}
