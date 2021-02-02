@@ -105,6 +105,8 @@ export default class TextPaintConfig extends Component /*:: <Props, State> */ {
     }
 
     render() {
+        if (!this.props.settings.textPaints[parseFloat(this.props.i)]) return <View></View>;
+
         return <Container>
             <Header>
                 <Left><Button transparent onPress={this.props.onClose}>

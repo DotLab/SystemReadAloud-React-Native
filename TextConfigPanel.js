@@ -7,7 +7,7 @@ import { SlidersColorPicker } from "react-native-color";
 import DropDownPicker from 'react-native-dropdown-picker'
 import Slider from '@react-native-community/slider';
 
-import Tts from "react-native-tts";;
+import Tts from "react-native-tts";
 import { fonts } from './fonts'
 import { Collapse, CollapseHeader, CollapseBody } from "accordion-collapse-react-native";
 import { paint } from './Reader'
@@ -16,7 +16,10 @@ import update from 'immutability-helper';
 import a from "./acss";
 
 const TEXT_PAINT_CONFIG = "TEXT_PAINT_CONFIG";
+const VOICE_PAINT_CONFIG = "VOICE_PAINT_CONFIG";
+
 import TextPaintConfig from './TextPaintConfig'
+import VoicePaintConfig from './VoicePaintConfig'
 
 function isRegexpValid(regexp/*: string */) {
 	var isValid = true;
@@ -57,7 +60,8 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 
 		this.state = { doShowColorPicker: false, colorPickerProps: {}, colorPickerSwatches: [] };
 
-		this.onTextPaintButtonPress.bind(this);
+		this.onTextPaintButtonPress = this.onTextPaintButtonPress.bind(this);
+		this.onPlaySampleAudio = this.onPlaySampleAudio.bind(this)
 		this.currentSpeechId = 0;
 	}
 
@@ -237,7 +241,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					<Item regular success={isValid} error={!isValid}>
 						<Input style={a("fz-16 h-30 p-0")} value={regexp} onChangeText={text => this.onTextEditBlockTextChange(key, i, "regexp", text)} />
 					</Item>
-					<TouchableOpacity transparent onPress={() => this.onTextPaintButtonPress(i, regexp)}>
+					<TouchableOpacity onPress={() => this.onTextPaintButtonPress(i, regexp)}>
 						<View style={{ backgroundColor: this.props.settings.pageColor }}>
 							<View style={{
 								backgroundColor: this.props.settings.lineColor,
@@ -249,6 +253,49 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 						</View>
 						{/* <Icon style={{ paddingVertical: 5, paddingHorizontal: 10, fontSize: 18 }} type="Feather" name="edit-2" /> */}
 					</TouchableOpacity>
+				</View>
+				<View style={a("pl-5")}>
+					<Button small style={a("as-c")} danger onPress={() => this.onTextEditBlockDeleteButtonPress(key, i)}><Icon name="trash" /></Button>
+					<Button small style={a("as-c")} success onPress={() => this.onTextPaintBlockCopyButtonPress(key, i)}><Icon name="copy" /></Button>
+				</View>
+				<View style={a("pl-5")}>
+					<Button small style={a("as-c")} light onPress={() => this.onTextEditBlockUpButtonPress(key, i)}><Icon name="arrow-up" /></Button>
+					<Button small style={a("as-c")} light onPress={() => this.onTextEditBlockDownButtonPress(key, i)}><Icon name="arrow-down" /></Button>
+				</View>
+			</ListItem>;
+		});
+	}
+
+	renderVoicePaintConfigBlock(key/*: string */) {
+		const value = this.props.settings[key];
+		return value.map(({ regexp }, i) => {
+			const isValid = isRegexpValid(regexp);
+			return <ListItem noIndent key={i.toString()} style={a("pl-12")}>
+				<View style={{ flex: 1 }}>
+					<Item regular success={isValid} error={!isValid}>
+						<Input style={a("fz-16 h-30 p-0")} value={regexp} onChangeText={text => this.onTextEditBlockTextChange(key, i, "regexp", text)} />
+					</Item>
+					{/* <View style={{
+						paddingHorizontal: 20,
+						paddingVertical: 10,
+					}}> */}
+					<View style={{ flexDirection: 'row' }}>
+						<TouchableOpacity
+							style={{ marginHorizontal: 10, paddingVertical: 10 }}
+							onPress={() => this.onPlaySampleAudio('This is a sample text.',
+								this.props.settings.voicePaints[i].style.pitch,
+								this.props.settings.voicePaints[i].style.rate,
+								this.props.settings.voicePaints[i].style.voiceId,
+							)}>
+							<Icon style={{ fontSize: 15 }} type="FontAwesome" name="play" />
+						</TouchableOpacity>
+						<TouchableOpacity style={{ paddingVertical: 10 }} onPress={() => this.onVoicePaintButtonPress(i, regexp)}>
+							<Text>This is a sample text.</Text>
+						</TouchableOpacity>
+					</View>
+
+					{/* <Text style={{ color: this.props.settings.textStyle.color || 'white' }}>{prefix} {line.textSegments.map(({ text, style }, i) => <Text key={i.toString()} style={style}>{text}</Text>)}</Text> */}
+					{/* </View>; */}
 				</View>
 				<View style={a("pl-5")}>
 					<Button small style={a("as-c")} danger onPress={() => this.onTextEditBlockDeleteButtonPress(key, i)}><Icon name="trash" /></Button>
@@ -280,14 +327,16 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		// if (!line.textSegments) line.textSegments = paint(line.text, this.props.settings.textStyle, this.props.settings.textPaints)
 
 		console.log(line)
-		return <View style={{
-			paddingHorizontal: 20,
-			paddingVertical: 10,
-		}}>
-			<Text>{line.text}</Text>
-			<TouchableOpacity onPress={this.onPlaySampleAudio.bind(this)}>
-				<Icon style={{ marginVertical: 10 }} type="FontAwesome" name="play-circle" />
+		return <View style={{ flex: 1, flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 10 }}>
+			<TouchableOpacity style={{ marginRight: 10, marginVertical: 10 }}
+				onPress={() => this.onPlaySampleAudio(line.text,
+					this.props.settings.voiceStyle.pitch,
+					this.props.settings.voiceStyle.rate,
+					this.props.settings.voiceStyle.voiceId,
+				)}>
+				<Icon style={{ fontSize: 15 }} type="FontAwesome" name="play" />
 			</TouchableOpacity>
+			<Text>{line.text}</Text>
 			{/* <Text style={{ color: this.props.settings.textStyle.color || 'white' }}>{prefix} {line.textSegments.map(({ text, style }, i) => <Text key={i.toString()} style={style}>{text}</Text>)}</Text> */}
 		</View>;
 	}
@@ -380,11 +429,26 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		});
 	}
 
-	onPlaySampleAudio() {
-		if (this.props.settings.voiceStyle.pitch) Tts.setDefaultPitch(this.props.settings.voiceStyle.pitch);
-		if (this.props.settings.voiceStyle.rate) Tts.setDefaultRate(this.props.settings.voiceStyle.rate);
-		Tts.setDefaultLanguage(this.props.settings.voiceStyle.voiceId);
-		Tts.speak(this.props.currentLine.text);
+	onVoicePaintButtonPress(i, regExp) {
+		this.setState({
+			page: VOICE_PAINT_CONFIG,
+			pageProps: {
+				i, regExp,
+				onClose: () => {
+					this.setState({ page: undefined });
+				}
+			}
+		});
+	}
+
+	onPlaySampleAudio(text, pitch, rate, voiceId) {
+		console.log('here!!', pitch, rate, voiceId);
+		if (pitch) Tts.setDefaultPitch(pitch);
+		if (rate) Tts.setDefaultRate(rate);
+		if (voiceId) Tts.setDefaultVoice(voiceId);
+
+		console.log('current pitch, rate, voice', pitch, rate, voiceId);
+		Tts.speak(text);
 		// this.currentSpeechId = 0;
 		// const voiceSegments = buildVoiceSegments(this.props.currentLine, this.props.settings.voiceStyle, this.props.settings.voicePaints, this.props.settings.voiceEdits);
 		// if (voiceSegments) {
@@ -420,6 +484,14 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					onSettingConfirm={this.onSettingConfirm.bind(this)}
 					discardTempChange={this.discardTempChange.bind(this)}
 					settings={this.props.settings}
+				/>
+			case VOICE_PAINT_CONFIG:
+				return <VoicePaintConfig {...this.state.pageProps}
+					onSettingChange={this.onSettingChange.bind(this)}
+					onSettingConfirm={this.onSettingConfirm.bind(this)}
+					discardTempChange={this.discardTempChange.bind(this)}
+					settings={this.props.settings}
+					voices={this.state.voices}
 				/>
 		}
 
@@ -527,7 +599,15 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 							{this.renderVoiceIdField("voiceId", "Voice name", "voiceStyle")}
 							{this.renderNumberSliderField("pitch", "Pitch", "voiceStyle", 0.5, 2, 0.1)}
 							{this.renderNumberSliderField("rate", "Rate", "voiceStyle", 0.01, 1, 0.1)}
+						</CollapseBody>
+					</Collapse>
 
+					<Collapse>
+						<CollapseHeader>
+							<Text style={{ padding: 15, fontSize: 17 }}>Regular expression voice style</Text>
+						</CollapseHeader>
+						<CollapseBody>
+							{this.renderVoicePaintConfigBlock("voicePaints")}
 						</CollapseBody>
 					</Collapse>
 
