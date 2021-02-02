@@ -67,7 +67,7 @@ function edit(text/*: string */, edits/*: Array<Edit> */) /*: string */ {
 	style: T
 |} */
 
-function paint/*:: <T> */(text/*: string */, style/*: T */, paints/*: Array<Paint<T>> */) /*: Array<Segment<T>> */ {
+export function paint/*:: <T> */(text/*: string */, style/*: T */, paints/*: Array<Paint<T>> */) /*: Array<Segment<T>> */ {
 	var segments = [{ text, style }];
 	// console.log(segments)
 	paints.forEach(p => {
@@ -118,6 +118,7 @@ function voiceStyleToParam(voiceStyle/*: VoiceStyle */) {
 
 function setTtsVoiceStyle(voiceStyle/*: VoiceStyle */) {
 	// if (voiceStyle.voiceId) Tts.setDefaultVoice(voiceStyle.voiceId);
+	console.log('set voice style', voiceStyle)
 	if (voiceStyle.pitch) Tts.setDefaultPitch(voiceStyle.pitch);
 	if (voiceStyle.rate) Tts.setDefaultRate(voiceStyle.rate);
 }
@@ -253,7 +254,7 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		this.setState({ loading: "Splitting text..." });
 		const texts /*: Array<string> */ = await startAsync/*:: <Array<string>> */(resolve => {
 			var texts = text.split(new RegExp(this.state.settings.splitRegexp));
-			texts = texts.filter(x => x && x.length > 1);
+			texts = texts.filter(x => x);
 			resolve(texts);
 		});
 
@@ -524,6 +525,8 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		const state = this.state;
 		const props = this.props;
 
+		console.log(this.state.settings.voiceStyle)
+
 		switch (state.page) {
 			case TEXT_CONFIG_PANEL:
 				return <TextConfigPanel {...state.pageProps}
@@ -531,24 +534,24 @@ export default class Reader extends Component /*:: <Props, State> */ {
 					onApply={this.onSettingConfirm.bind(this)}
 					discardTempChange={this.discardTempChange.bind(this)}
 					settings={state.tempSettings}
-					currentLine={this.lines[this.selectedIndex].text}
-					prevLine3={(this.selectedIndex > 3 && this.lines[this.selectedIndex - 4].text)
-						|| (this.selectedIndex > 2 && this.lines[this.selectedIndex - 3].text)
-						|| (this.selectedIndex > 1 && this.lines[this.selectedIndex - 2].text)
-						|| (this.selectedIndex > 0 && this.lines[this.selectedIndex - 1].text)
-						|| this.lines[this.selectedIndex].text
+					currentLine={this.lines[this.selectedIndex]}
+					prevLine3={(this.selectedIndex > 3 && this.lines[this.selectedIndex - 4])
+						|| (this.selectedIndex > 2 && this.lines[this.selectedIndex - 3])
+						|| (this.selectedIndex > 1 && this.lines[this.selectedIndex - 2])
+						|| (this.selectedIndex > 0 && this.lines[this.selectedIndex - 1])
+						|| this.lines[this.selectedIndex]
 					}
-					prevLine2={(this.selectedIndex > 2 && this.lines[this.selectedIndex - 3].text)
-						|| (this.selectedIndex > 1 && this.lines[this.selectedIndex - 2].text)
-						|| (this.selectedIndex > 0 && this.lines[this.selectedIndex - 1].text)
-						|| this.lines[this.selectedIndex].text
+					prevLine2={(this.selectedIndex > 2 && this.lines[this.selectedIndex - 3])
+						|| (this.selectedIndex > 1 && this.lines[this.selectedIndex - 2])
+						|| (this.selectedIndex > 0 && this.lines[this.selectedIndex - 1])
+						|| this.lines[this.selectedIndex]
 					}
-					prevLine1={(this.selectedIndex > 1 && this.lines[this.selectedIndex - 2].text)
-						|| (this.selectedIndex > 0 && this.lines[this.selectedIndex - 1].text)
-						|| this.lines[this.selectedIndex].text
+					prevLine1={(this.selectedIndex > 1 && this.lines[this.selectedIndex - 2])
+						|| (this.selectedIndex > 0 && this.lines[this.selectedIndex - 1])
+						|| this.lines[this.selectedIndex]
 					}
-					prevLine0={this.selectedIndex > 0 && this.lines[this.selectedIndex - 1].text
-						|| this.lines[this.selectedIndex].text}
+					prevLine0={this.selectedIndex > 0 && this.lines[this.selectedIndex - 1]
+						|| this.lines[this.selectedIndex]}
 				/>;
 		}
 

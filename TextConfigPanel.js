@@ -4,9 +4,13 @@ import React, { Component } from "react";
 import { View, ScrollView, Platform, TouchableOpacity } from "react-native";
 import { Container, Header, Left, Body, Right, Button, Icon, Title, Text, ListItem, CheckBox, Item, Input } from "native-base";
 import { SlidersColorPicker } from "react-native-color";
-import DropDownPicker from 'react-native-dropdown-picker';
+import DropDownPicker from 'react-native-dropdown-picker'
+import Slider from '@react-native-community/slider';
+
+import Tts from "react-native-tts";;
 import { fonts } from './fonts'
 import { Collapse, CollapseHeader, CollapseBody } from "accordion-collapse-react-native";
+import { paint } from './Reader'
 
 import update from 'immutability-helper';
 import a from "./acss";
@@ -35,13 +39,39 @@ function isNumberValid(num/*: number */) {
 
 /*:: type State = Object */
 
+function buildVoiceSegments(text/*: string */, voiceStyle/*: VoiceStyle */, voicePaints/*: Array<Paint<VoiceStyle>> */, voiceEdits/*: Array<Edit> */) /*: Array<Segment<VoiceStyle>> */ {
+	const voiceSegments = [];
+	paint(text, voiceStyle, voicePaints).forEach(s => {
+		s.text = s.text.trim();
+		if (s.text.length > 1) {
+			s.text = edit(s.text, voiceEdits);
+			voiceSegments.push(s);
+		}
+	});
+	return voiceSegments;
+}
+
 export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 	constructor(props/*: Props */) {
 		super(props);
 
 		this.state = { doShowColorPicker: false, colorPickerProps: {}, colorPickerSwatches: [] };
 
-		this.onTextPaintButtonPress.bind(this)
+		this.onTextPaintButtonPress.bind(this);
+		this.currentSpeechId = 0;
+	}
+
+	async componentDidMount() {
+		try {
+			await Tts.getInitStatus();
+			const voices = await Tts.voices();
+			this.setState({ voices })
+		} catch (err) {
+			if (err.code === 'no_engine') {
+				Tts.requestInstallEngine();
+			}
+			throw err;
+		}
 	}
 
 	componentWillUnmount() {
@@ -232,6 +262,80 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		});
 	}
 
+	renderPreviewLine(line, backgroundColor, prefix) {
+		// paint as needed
+		if (!line.textSegments) line.textSegments = paint(line.text, this.props.settings.textStyle, this.props.settings.textPaints)
+
+		return <View style={{
+			backgroundColor,
+			paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,
+			paddingVertical: this.props.settings.linePaddingY ? this.props.settings.linePaddingY : 0,
+		}}>
+			<Text style={{ color: this.props.settings.textStyle.color || 'white' }}>{prefix} {line.textSegments.map(({ text, style }, i) => <Text key={i.toString()} style={style}>{text}</Text>)}</Text>
+		</View>;
+	}
+
+	renderVoicePreviewLine(line) {
+		// paint as needed
+		// if (!line.textSegments) line.textSegments = paint(line.text, this.props.settings.textStyle, this.props.settings.textPaints)
+
+		console.log(line)
+		return <View style={{
+			paddingHorizontal: 20,
+			paddingVertical: 10,
+		}}>
+			<Text>{line.text}</Text>
+			<TouchableOpacity onPress={this.onPlaySampleAudio.bind(this)}>
+				<Icon style={{ marginVertical: 10 }} type="FontAwesome" name="play-circle" />
+			</TouchableOpacity>
+			{/* <Text style={{ color: this.props.settings.textStyle.color || 'white' }}>{prefix} {line.textSegments.map(({ text, style }, i) => <Text key={i.toString()} style={style}>{text}</Text>)}</Text> */}
+		</View>;
+	}
+
+	renderNumberSliderField(key/*: string */, text/*: string */, key2, min, max, step) {
+		const value = key2 ? this.props.settings[key2][key] : this.props.settings[key];
+		return <ListItem noIndent style={a("pl-12")}>
+			<Text style={a("fx-1 px-10 fw-600")}>{text}</Text>
+			<View style={a("fx-1")}>
+				<Text>{value.toFixed(1)}</Text>
+				<Slider
+					value={value}
+					minimumValue={min}
+					maximumValue={max}
+					step={step}
+					onSlidingComplete={(value) => this.updateSettingsAndSetState({ [key2]: { [key]: { $set: parseFloat(value) } } })}
+				/>
+
+			</View>
+		</ListItem>;
+	}
+
+	renderVoiceIdField(key/*: string */, text/*: string */, key2) {
+		const value = this.props.settings[key2][key];
+		const voices = this.state.voices || [];
+
+		// console.log(voices.map(x => { return { label: `${x.language}  ${x.name}`, value: x.id } }))
+		return <View style={Platform.OS !== 'android' && { zIndex: 10 }}>
+			<Text style={a("mx-10 my-15 pl-12 fw-600")}>{text}</Text>
+			<DropDownPicker
+				// items={Platform.OS === 'android' ?
+				// fonts.Android.map(x => { return { label: x, value: x } }) :
+				items={
+					voices.map(x => { return { label: `${x.language}  ${x.name}`, value: x.id } })}
+				defaultValue={value || 'com.apple.ttsbundle.Samantha-compact'}
+
+				containerStyle={{ height: 30, paddingHorizontal: 12 }}
+				selectedLabelStyle={{ color: 'black' }}
+				style={{
+					backgroundColor: '#ffffff', borderTopLeftRadius: 0, borderTopRightRadius: 0,
+					borderBottomLeftRadius: 0, borderBottomRightRadius: 0,
+				}}
+				dropDownStyle={{ backgroundColor: 'white', marginHorizontal: 12 }}
+				onChangeItem={item => { this.updateSettingsAndSetState({ [key2]: { [key]: { $set: item.value } } }) }}
+			/>
+		</View >;
+	}
+
 	onTextEditBlockTextChange(key/*: string */, i/*: number */, key2/*: string */, text/*: string */) {
 		this.updateSettingsAndSetState({ [key]: { [i]: { [key2]: { $set: text } } } });
 	}
@@ -276,6 +380,26 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		});
 	}
 
+	onPlaySampleAudio() {
+		if (this.props.settings.voiceStyle.pitch) Tts.setDefaultPitch(this.props.settings.voiceStyle.pitch);
+		if (this.props.settings.voiceStyle.rate) Tts.setDefaultRate(this.props.settings.voiceStyle.rate);
+		Tts.setDefaultLanguage(this.props.settings.voiceStyle.voiceId);
+		Tts.speak(this.props.currentLine.text);
+		// this.currentSpeechId = 0;
+		// const voiceSegments = buildVoiceSegments(this.props.currentLine, this.props.settings.voiceStyle, this.props.settings.voicePaints, this.props.settings.voiceEdits);
+		// if (voiceSegments) {
+		// 	const segment = this.lines[this.selectedIndex].voiceSegments[this.currentSpeechId];
+
+		// 	console.log(voiceSegments, segment);
+		// 	setTtsVoiceStyle(segment.style);
+		// 	if (Platform.OS === "android") {
+		// 		Tts.speak("　　“    " + segment.text + "                     ", voiceStyleToParam(segment.style));
+		// 	} else {
+		// 		Tts.speak(segment.text, voiceStyleToParam(segment.style));
+		// 	}
+		// }
+	}
+
 	onSettingChange(tempSettings) {
 		this.props.onChange(tempSettings);
 	}
@@ -296,7 +420,6 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					onSettingConfirm={this.onSettingConfirm.bind(this)}
 					discardTempChange={this.discardTempChange.bind(this)}
 					settings={this.props.settings}
-					currentLine={this.props.currentLine}
 				/>
 		}
 
@@ -312,61 +435,51 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 			</Header>
 			<View style={{ flex: 1 }}>
 				<ScrollView style={{ flex: 1 }}>
-					<ListItem itemDivider><Text>Preprocessing</Text></ListItem>
-					{this.renderCheckbox("decodeHtml", "Decode HTML entities")}
-					{this.renderCheckbox("toFullWidth", "Convert to full width characters")}
-					{this.renderCheckbox("toHalfWidth", "Convert to half width characters")}
-					<ListItem itemDivider><Text>Editing full text</Text></ListItem>
-					{this.renderTextEditConfigBlock("preEdits")}
-					<ListItem itemDivider><Text>Splitting lines</Text></ListItem>
-					{this.renderRegexTextField("splitRegexp", "Line split RegExp")}
-					<ListItem itemDivider><Text>Editing a line</Text></ListItem>
-					{this.renderTextEditConfigBlock("edits")}
+					<Collapse>
+						<CollapseHeader>
+							<Text style={{ padding: 15, fontSize: 17 }}>Preprocessing</Text>
+						</CollapseHeader>
+						<CollapseBody>
+							{this.renderCheckbox("decodeHtml", "Decode HTML entities")}
+							{this.renderCheckbox("toFullWidth", "Convert to full width characters")}
+							{this.renderCheckbox("toHalfWidth", "Convert to half width characters")}
+						</CollapseBody>
+					</Collapse>
+					<Collapse>
+						<CollapseHeader>
+							<Text style={{ padding: 15, fontSize: 17 }}>Editing full text</Text>
+						</CollapseHeader>
+						<CollapseBody>
+							{this.renderTextEditConfigBlock("preEdits")}
+						</CollapseBody>
+					</Collapse>
+					<Collapse>
+						<CollapseHeader>
+							<Text style={{ padding: 15, fontSize: 17 }}>Splitting lines</Text>
+						</CollapseHeader>
+						<CollapseBody>
+							{this.renderRegexTextField("splitRegexp", "Line split RegExp")}
+						</CollapseBody>
+					</Collapse>
+					<Collapse>
+						<CollapseHeader>
+							<Text style={{ padding: 15, fontSize: 17 }}>Editing a line</Text>
+						</CollapseHeader>
+						<CollapseBody>
+							{this.renderTextEditConfigBlock("edits")}
+						</CollapseBody>
+					</Collapse>
 					<View style={{ marginVertical: 20, backgroundColor: this.props.settings.pageColor }}>
-						{this.props.prevLine3 && <View style={{
-							backgroundColor: this.props.settings.lineReadColor,
-							paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,
-							paddingVertical: this.props.settings.linePaddingY ? this.props.settings.linePaddingY : 0,
-						}}>
-							<Text style={this.props.settings.textStyle}>[Read line] {this.props.prevLine3}</Text>
-						</View>}
-
-						{this.props.prevLine2 && <View style={{
-							backgroundColor: this.props.settings.lineReadingColor,
-							paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,
-							paddingVertical: this.props.settings.linePaddingY ? this.props.settings.linePaddingY : 0,
-						}}>
-							<Text style={this.props.settings.textStyle}>[Line being read] {this.props.prevLine2}</Text>
-						</View>}
-
-						{this.props.prevLine1 && <View style={{
-							backgroundColor: this.props.settings.lineScheduledColor,
-							paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,
-							paddingVertical: this.props.settings.linePaddingY ? this.props.settings.linePaddingY : 0,
-						}}>
-							<Text style={this.props.settings.textStyle}>[Line to be read (when audio paused)] {this.props.prevLine1}</Text>
-						</View>}
-
-						{this.props.prevLine0 && <View style={{
-							backgroundColor: this.props.settings.lineColor,
-							paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,
-							paddingVertical: this.props.settings.linePaddingY ? this.props.settings.linePaddingY : 0,
-						}}>
-							<Text style={this.props.settings.textStyle}>[Unread line] {this.props.prevLine0}</Text>
-						</View>}
-
-						<View style={{
-							backgroundColor: this.props.settings.lineSelectedColor,
-							paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,
-							paddingVertical: this.props.settings.linePaddingY ? this.props.settings.linePaddingY : 0,
-						}}>
-							<Text style={this.props.settings.textStyle}>[Selected line] {this.props.currentLine}</Text>
-						</View>
+						{this.props.prevLine3 && this.renderPreviewLine(this.props.prevLine3, this.props.settings.lineReadColor, "[Line that has been read]")}
+						{this.props.prevLine2 && this.renderPreviewLine(this.props.prevLine2, this.props.settings.lineReadingColor, "[Line being read]")}
+						{this.props.prevLine1 && this.renderPreviewLine(this.props.prevLine1, this.props.settings.lineScheduledColor, "[Line to be read (audio paused)]")}
+						{this.props.prevLine0 && this.renderPreviewLine(this.props.prevLine0, this.props.settings.lineColor, "[Unread line]")}
+						{this.props.currentLine && this.renderPreviewLine(this.props.currentLine, this.props.settings.lineSelectedColor, "[Selected line]")}
 					</View>
 
 					<Collapse>
 						<CollapseHeader>
-							<Text style={{ padding: 15, fontSize: 17 }}>Rendering lines</Text>
+							<Text style={{ padding: 15, fontSize: 17 }}>Line style</Text>
 						</CollapseHeader>
 						<CollapseBody>
 							{this.renderNumberTextField("linePaddingX", "Horizontal Padding")}
@@ -381,7 +494,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					</Collapse>
 					<Collapse>
 						<CollapseHeader>
-							<Text style={{ padding: 15, fontSize: 17 }}>Rendering text</Text>
+							<Text style={{ padding: 15, fontSize: 17 }}>Default text style</Text>
 						</CollapseHeader>
 						<CollapseBody>
 							{this.renderFontFamilyField("fontFamily", "Font family", "textStyle")}
@@ -390,10 +503,36 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 							{this.renderColorTextField("color", "Font color", "textStyle")}
 						</CollapseBody>
 					</Collapse>
-					<ListItem itemDivider><Text>RegExp Text Style</Text></ListItem>
-					{this.renderTextPaintConfigBlock("textPaints")}
+
+					<Collapse>
+						<CollapseHeader>
+							<Text style={{ padding: 15, fontSize: 17 }}>Regular expression text style</Text>
+						</CollapseHeader>
+						<CollapseBody>
+							{this.renderTextPaintConfigBlock("textPaints")}
+						</CollapseBody>
+					</Collapse>
 					<ListItem noIndent>
 						<View style={{ flex: 1 }}>
+						</View>
+					</ListItem>
+					<View style={{ marginVertical: 20 }}>
+						{this.renderVoicePreviewLine(this.props.currentLine)}
+					</View>
+					<Collapse>
+						<CollapseHeader>
+							<Text style={{ padding: 15, fontSize: 17 }}>Voices</Text>
+						</CollapseHeader>
+						<CollapseBody>
+							{this.renderVoiceIdField("voiceId", "Voice name", "voiceStyle")}
+							{this.renderNumberSliderField("pitch", "Pitch", "voiceStyle", 0.5, 2, 0.1)}
+							{this.renderNumberSliderField("rate", "Rate", "voiceStyle", 0.01, 1, 0.1)}
+
+						</CollapseBody>
+					</Collapse>
+
+					<ListItem noIndent>
+						<View style={{ flex: 1, marginVertical: 20 }}>
 						</View>
 					</ListItem>
 					{this.state.doShowColorPicker && <SlidersColorPicker

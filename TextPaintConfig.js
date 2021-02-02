@@ -123,7 +123,7 @@ export default class TextPaintConfig extends Component /*:: <Props, State> */ {
                             paddingHorizontal: this.props.settings.linePaddingX ? this.props.settings.linePaddingX : 0,
                             paddingVertical: this.props.settings.linePaddingY ? this.props.settings.linePaddingY : 0,
                         }}>
-                            <Text style={this.props.settings.textPaints[parseFloat(this.props.i)].style}>{this.props.currentLine}</Text>
+                            <Text style={this.props.settings.textPaints[parseFloat(this.props.i)].style}>Sample text</Text>
                         </View>
                     </View>
                     <Text style={{ padding: 15 }}>Text Paint for  {this.props.regExp}</Text>
