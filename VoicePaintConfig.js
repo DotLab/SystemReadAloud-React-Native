@@ -144,9 +144,8 @@ export default class VoicePaintConfig extends Component /*:: <Props, State> */ {
                                 this.props.settings.voicePaints[this.props.i].style.rate,
                                 this.props.settings.voicePaints[this.props.i].style.voiceId,
                             )}>
-                            <Icon style={{ fontSize: 15 }} type="FontAwesome" name="play" />
+                            <Text>This is a sample text</Text>
                         </TouchableOpacity>
-                        <Text>This is a sample text</Text>
                     </View>
 
                     <Text style={{ padding: 15 }}>Voice Paint for  {this.props.regExp}</Text>

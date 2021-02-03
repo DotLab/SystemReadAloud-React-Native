@@ -57,7 +57,7 @@ const SETTINGS = 'SETTINGS';
 
 const TEXT_CONFIG_PANEL = "TEXT_CONFIG_PANEL";
 
-function edit(text/*: string */, edits/*: Array<Edit> */) /*: string */ {
+export function edit(text/*: string */, edits/*: Array<Edit> */) /*: string */ {
 	edits.forEach(e => text = text.replace(new RegExp(e.regexp, "g"), e.replace));
 	return text;
 }
@@ -106,7 +106,7 @@ export function paint/*:: <T> */(text/*: string */, style/*: T */, paints/*: Arr
 	return segments;
 }
 
-function voiceStyleToParam(voiceStyle/*: VoiceStyle */) {
+export function voiceStyleToParam(voiceStyle/*: VoiceStyle */) {
 	if (voiceStyle.voiceId) {
 		return {
 			iosVoiceId: voiceStyle.voiceId,
@@ -116,14 +116,14 @@ function voiceStyleToParam(voiceStyle/*: VoiceStyle */) {
 	return undefined;
 }
 
-function setTtsVoiceStyle(voiceStyle/*: VoiceStyle */) {
+export function setTtsVoiceStyle(voiceStyle/*: VoiceStyle */) {
 	// if (voiceStyle.voiceId) Tts.setDefaultVoice(voiceStyle.voiceId);
 	console.log('set voice style', voiceStyle)
 	if (voiceStyle.pitch) Tts.setDefaultPitch(voiceStyle.pitch);
 	if (voiceStyle.rate) Tts.setDefaultRate(voiceStyle.rate);
 }
 
-function buildVoiceSegments(text/*: string */, voiceStyle/*: VoiceStyle */, voicePaints/*: Array<Paint<VoiceStyle>> */, voiceEdits/*: Array<Edit> */) /*: Array<Segment<VoiceStyle>> */ {
+export function buildVoiceSegments(text/*: string */, voiceStyle/*: VoiceStyle */, voicePaints/*: Array<Paint<VoiceStyle>> */, voiceEdits/*: Array<Edit> */) /*: Array<Segment<VoiceStyle>> */ {
 	const voiceSegments = [];
 	paint(text, voiceStyle, voicePaints).forEach(s => {
 		s.text = s.text.trim();
@@ -214,6 +214,13 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		};
 
 		this.selectedIndex = props.book.selectedIndex || 0;
+	}
+
+	componentWillUnmount() {
+		Tts.stop();
+		Tts.removeEventListener("tts-start", () => console.log('start'));
+		Tts.removeEventListener("tts-finish", () => console.log('finish'));
+		Tts.removeEventListener("tts-cancel", () => console.log('cancel'));
 	}
 
 	componentDidMount() {
@@ -494,6 +501,10 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	}
 
 	onTextConfigButtonPress() {
+		Tts.stop();
+		Tts.removeEventListener("tts-start", () => console.log('start'));
+		Tts.removeEventListener("tts-finish", () => console.log('finish'));
+		Tts.removeEventListener("tts-cancel", () => console.log('cancel'));
 		this.setState({
 			page: TEXT_CONFIG_PANEL,
 			pageProps: {

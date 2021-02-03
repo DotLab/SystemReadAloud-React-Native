@@ -10,7 +10,7 @@ import Slider from '@react-native-community/slider';
 import Tts from "react-native-tts";
 import { fonts } from './fonts'
 import { Collapse, CollapseHeader, CollapseBody } from "accordion-collapse-react-native";
-import { paint } from './Reader'
+import { paint, edit, setTtsVoiceStyle, buildVoiceSegments, voiceStyleToParam } from './Reader'
 
 import update from 'immutability-helper';
 import a from "./acss";
@@ -42,18 +42,6 @@ function isNumberValid(num/*: number */) {
 
 /*:: type State = Object */
 
-function buildVoiceSegments(text/*: string */, voiceStyle/*: VoiceStyle */, voicePaints/*: Array<Paint<VoiceStyle>> */, voiceEdits/*: Array<Edit> */) /*: Array<Segment<VoiceStyle>> */ {
-	const voiceSegments = [];
-	paint(text, voiceStyle, voicePaints).forEach(s => {
-		s.text = s.text.trim();
-		if (s.text.length > 1) {
-			s.text = edit(s.text, voiceEdits);
-			voiceSegments.push(s);
-		}
-	});
-	return voiceSegments;
-}
-
 export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 	constructor(props/*: Props */) {
 		super(props);
@@ -61,7 +49,8 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		this.state = { doShowColorPicker: false, colorPickerProps: {}, colorPickerSwatches: [] };
 
 		this.onTextPaintButtonPress = this.onTextPaintButtonPress.bind(this);
-		this.onPlaySampleAudio = this.onPlaySampleAudio.bind(this)
+		this.onPlaySampleAudio = this.onPlaySampleAudio.bind(this);
+		this.onPlayVoicePaints = this.onPlayVoicePaints.bind(this);
 		this.currentSpeechId = 0;
 	}
 
@@ -76,6 +65,13 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 			}
 			throw err;
 		}
+
+		const voiceSegments = buildVoiceSegments(this.props.currentLine.text, this.props.settings.voiceStyle, this.props.settings.voicePaints, this.props.settings.voiceEdits);
+		this.setState({ voiceSegments });
+		let colors = [];
+		voiceSegments.forEach((x, i) => colors.push(`hsl(${Math.floor(360 / (i + 1))}, 40%, 40%)`));
+		this.setState({ colors });
+		console.log('colors', colors);
 	}
 
 	componentWillUnmount() {
@@ -282,14 +278,15 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					<View style={{ flexDirection: 'row' }}>
 						<TouchableOpacity
 							style={{ marginHorizontal: 10, paddingVertical: 10 }}
-							onPress={() => this.onPlaySampleAudio('This is a sample text.',
+							onPress={() => this.onVoicePaintButtonPress(i, regexp)}>
+							<Icon style={{ fontSize: 15 }} type="FontAwesome" name="pencil" />
+						</TouchableOpacity>
+						<TouchableOpacity style={{ paddingVertical: 10 }}
+							onPress={() => this.onPlayVoicePaints('This is a sample text.',
 								this.props.settings.voicePaints[i].style.pitch,
 								this.props.settings.voicePaints[i].style.rate,
 								this.props.settings.voicePaints[i].style.voiceId,
 							)}>
-							<Icon style={{ fontSize: 15 }} type="FontAwesome" name="play" />
-						</TouchableOpacity>
-						<TouchableOpacity style={{ paddingVertical: 10 }} onPress={() => this.onVoicePaintButtonPress(i, regexp)}>
 							<Text>This is a sample text.</Text>
 						</TouchableOpacity>
 					</View>
@@ -326,7 +323,8 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		// paint as needed
 		// if (!line.textSegments) line.textSegments = paint(line.text, this.props.settings.textStyle, this.props.settings.textPaints)
 
-		console.log(line)
+		if (!this.state.colors) return;
+		console.log(this.state.colors)
 		return <View style={{ flex: 1, flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 10 }}>
 			<TouchableOpacity style={{ marginRight: 10, marginVertical: 10 }}
 				onPress={() => this.onPlaySampleAudio(line.text,
@@ -334,10 +332,11 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 					this.props.settings.voiceStyle.rate,
 					this.props.settings.voiceStyle.voiceId,
 				)}>
-				<Icon style={{ fontSize: 15 }} type="FontAwesome" name="play" />
+				<Text>
+					{this.state.voiceSegments &&
+						this.state.voiceSegments.map((x, i) => { return <Text style={{ color: this.state.colors[i] }}>{x.text} </Text> })}
+				</Text>
 			</TouchableOpacity>
-			<Text>{line.text}</Text>
-			{/* <Text style={{ color: this.props.settings.textStyle.color || 'white' }}>{prefix} {line.textSegments.map(({ text, style }, i) => <Text key={i.toString()} style={style}>{text}</Text>)}</Text> */}
 		</View>;
 	}
 
@@ -367,8 +366,6 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		return <View style={Platform.OS !== 'android' && { zIndex: 10 }}>
 			<Text style={a("mx-10 my-15 pl-12 fw-600")}>{text}</Text>
 			<DropDownPicker
-				// items={Platform.OS === 'android' ?
-				// fonts.Android.map(x => { return { label: x, value: x } }) :
 				items={
 					voices.map(x => { return { label: `${x.language}  ${x.name}`, value: x.id } })}
 				defaultValue={value || 'com.apple.ttsbundle.Samantha-compact'}
@@ -418,6 +415,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 	}
 
 	onTextPaintButtonPress(i, regExp) {
+		Tts.stop();
 		this.setState({
 			page: TEXT_PAINT_CONFIG,
 			pageProps: {
@@ -430,6 +428,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 	}
 
 	onVoicePaintButtonPress(i, regExp) {
+		Tts.stop();
 		this.setState({
 			page: VOICE_PAINT_CONFIG,
 			pageProps: {
@@ -442,26 +441,33 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 	}
 
 	onPlaySampleAudio(text, pitch, rate, voiceId) {
-		console.log('here!!', pitch, rate, voiceId);
 		if (pitch) Tts.setDefaultPitch(pitch);
 		if (rate) Tts.setDefaultRate(rate);
 		if (voiceId) Tts.setDefaultVoice(voiceId);
 
-		console.log('current pitch, rate, voice', pitch, rate, voiceId);
-		Tts.speak(text);
-		// this.currentSpeechId = 0;
-		// const voiceSegments = buildVoiceSegments(this.props.currentLine, this.props.settings.voiceStyle, this.props.settings.voicePaints, this.props.settings.voiceEdits);
-		// if (voiceSegments) {
-		// 	const segment = this.lines[this.selectedIndex].voiceSegments[this.currentSpeechId];
+		this.currentSpeechId = 0;
+		const voiceSegments = buildVoiceSegments(text, this.props.settings.voiceStyle, this.props.settings.voicePaints, this.props.settings.voiceEdits);
+		if (voiceSegments) {
+			for (let i = 0; i < voiceSegments.length; i++) {
 
-		// 	console.log(voiceSegments, segment);
-		// 	setTtsVoiceStyle(segment.style);
-		// 	if (Platform.OS === "android") {
-		// 		Tts.speak("　　“    " + segment.text + "                     ", voiceStyleToParam(segment.style));
-		// 	} else {
-		// 		Tts.speak(segment.text, voiceStyleToParam(segment.style));
-		// 	}
-		// }
+				const segment = voiceSegments[i];
+
+				console.log(voiceSegments, segment);
+				setTtsVoiceStyle(segment.style);
+				if (Platform.OS === "android") {
+					Tts.speak("　　“    " + segment.text + "                     ", voiceStyleToParam(segment.style));
+				} else {
+					Tts.speak(segment.text, voiceStyleToParam(segment.style));
+				}
+			}
+		}
+	}
+
+	onPlayVoicePaints(text, pitch, rate, voiceId) {
+		if (pitch) Tts.setDefaultPitch(pitch);
+		if (rate) Tts.setDefaultRate(rate);
+		if (voiceId) Tts.setDefaultVoice(voiceId);
+		Tts.speak(text);
 	}
 
 	onSettingChange(tempSettings) {
