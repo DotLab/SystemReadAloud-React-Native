@@ -71,7 +71,6 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 		let colors = [];
 		voiceSegments.forEach((x, i) => colors.push(`hsl(${Math.floor(360 / (i + 1))}, 40%, 40%)`));
 		this.setState({ colors });
-		console.log('colors', colors);
 	}
 
 	componentWillUnmount() {
@@ -320,11 +319,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 	}
 
 	renderVoicePreviewLine(line) {
-		// paint as needed
-		// if (!line.textSegments) line.textSegments = paint(line.text, this.props.settings.textStyle, this.props.settings.textPaints)
-
 		if (!this.state.colors) return;
-		console.log(this.state.colors)
 		return <View style={{ flex: 1, flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 10 }}>
 			<TouchableOpacity style={{ marginRight: 10, marginVertical: 10 }}
 				onPress={() => this.onPlaySampleAudio(line.text,
@@ -334,7 +329,7 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 				)}>
 				<Text>
 					{this.state.voiceSegments &&
-						this.state.voiceSegments.map((x, i) => { return <Text style={{ color: this.state.colors[i] }}>{x.text} </Text> })}
+						this.state.voiceSegments.map((x, i) => { return <Text key={i.toString()} style={{ color: this.state.colors[i] }}>{x.text} </Text> })}
 				</Text>
 			</TouchableOpacity>
 		</View>;
@@ -451,8 +446,6 @@ export default class TextConfigPanel extends Component /*:: <Props, State> */ {
 			for (let i = 0; i < voiceSegments.length; i++) {
 
 				const segment = voiceSegments[i];
-
-				console.log(voiceSegments, segment);
 				setTtsVoiceStyle(segment.style);
 				if (Platform.OS === "android") {
 					Tts.speak("　　“    " + segment.text + "                     ", voiceStyleToParam(segment.style));

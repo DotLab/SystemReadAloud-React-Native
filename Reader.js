@@ -118,7 +118,6 @@ export function voiceStyleToParam(voiceStyle/*: VoiceStyle */) {
 
 export function setTtsVoiceStyle(voiceStyle/*: VoiceStyle */) {
 	// if (voiceStyle.voiceId) Tts.setDefaultVoice(voiceStyle.voiceId);
-	console.log('set voice style', voiceStyle)
 	if (voiceStyle.pitch) Tts.setDefaultPitch(voiceStyle.pitch);
 	if (voiceStyle.rate) Tts.setDefaultRate(voiceStyle.rate);
 }
@@ -375,12 +374,10 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	}
 
 	speakNextSegment() {
-		console.log('curent line', this.lines[this.selectedIndex])
-		console.log('curent selected index', this.selectedIndex)
+		console.log('speaking next segment', this.lines[this.selectedIndex])
 		if (this.lines[this.selectedIndex].voiceSegments) {
 			const segment = this.lines[this.selectedIndex].voiceSegments[this.currentSpeechId];
 
-			console.log(this.lines[this.selectedIndex].voiceSegments, segment);
 			setTtsVoiceStyle(segment.style);
 			if (Platform.OS === "android") {
 				Tts.speak("　　“    " + segment.text + "                     ", voiceStyleToParam(segment.style));
@@ -524,6 +521,10 @@ export default class Reader extends Component /*:: <Props, State> */ {
 		const confirmed = JSON.parse(JSON.stringify(temp));
 		this.setState({ settings: confirmed });
 		await Store.update(SETTINGS, confirmed);
+		Tts.removeAllListeners("tts-start");
+		Tts.removeAllListeners("tts-finish");
+		Tts.removeAllListeners("tts-cancel");
+		Tts.stop();
 		this.parseText(this.text);
 	}
 
@@ -535,8 +536,6 @@ export default class Reader extends Component /*:: <Props, State> */ {
 	render() {
 		const state = this.state;
 		const props = this.props;
-
-		console.log(this.state.settings.voiceStyle)
 
 		switch (state.page) {
 			case TEXT_CONFIG_PANEL:
