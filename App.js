@@ -311,7 +311,8 @@ class App extends Component /*:: <Props, State> */ {
 		try {
 			const res = await DocumentPicker.pick({ type: [DocumentPicker.types.plainText] });
 
-			const text = await FileSystem.readAsStringAsync(res.uri)
+			const text = await FileSystem.readAsStringAsync(res.uri);
+			if (!text) return;
 			console.log(text)
 
 			this.setState({ page: undefined, importedBookTitle: res.name });
